@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense,useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
 
 import {
   ArrowLeft,
@@ -67,7 +68,7 @@ const formatDate = (date) => {
 |--------------------------------------------------------------------------
 */
 
-export default function PaymentPage() {
+function PaymentPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1139,5 +1140,20 @@ export default function PaymentPage() {
         </div>
       </main>
     </>
+  ); 
+}
+export default function PaymentPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-zinc-950">
+          <p className="text-sm text-slate-600 dark:text-zinc-300">
+            Loading payment page...
+          </p>
+        </main>
+      }
+    >
+      <PaymentPageContent />
+    </Suspense>
   );
 }

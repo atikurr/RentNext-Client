@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense,useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -33,7 +33,7 @@ const API_URL =
 |--------------------------------------------------------------------------
 */
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams =
     useSearchParams();
 
@@ -795,5 +795,20 @@ useEffect(() => {
 
       </div>
     </main>
+  );
+}
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950">
+          <p className="text-zinc-600 dark:text-zinc-300">
+            Loading payment details...
+          </p>
+        </main>
+      }
+    >
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }
