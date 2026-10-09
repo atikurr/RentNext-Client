@@ -3,16 +3,19 @@
 import { createAuthClient } from "better-auth/react";
 import { jwtClient } from "better-auth/client/plugins";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-if (!apiUrl) {
-  throw new Error("NEXT_PUBLIC_API_URL is not set.");
-}
+// Browser-e Vercel-er nijer origin use hobe (proxy diye backend-e jabe),
+// server-side render-e env theke nibe, na thakle localhost.
+const baseURL =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const authClient = createAuthClient({
-  baseURL: apiUrl,
+  baseURL,
+
   fetchOptions: {
     credentials: "include",
   },
+
   plugins: [jwtClient()],
 });

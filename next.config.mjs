@@ -1,3 +1,5 @@
+const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactCompiler: true,
@@ -17,6 +19,15 @@ const nextConfig = {
         hostname: "images.unsplash.com",
       },
     ],
+  },
+
+  async rewrites() {
+    return [
+      {
+        source: "/api/auth/:path*",
+        destination: `${backendUrl}/api/auth/:path*`,
+      },
+    ];
   },
 };
 
