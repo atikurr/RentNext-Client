@@ -1,9 +1,11 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+
 import {
   Building2,
   CalendarCheck2,
@@ -22,64 +24,45 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 
-/* =========================================================
-   NAVIGATION
-========================================================= */
+const THEME_KEY = "property-rental-theme";
 
 const navigation = [
-  {
-    label: "Dashboard",
-    href: "/dashboard/owner",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "Add Property",
-    href: "/dashboard/owner/add-property",
-    icon: PlusCircle,
-  },
-  {
-    label: "My Properties",
-    href: "/dashboard/owner/properties",
-    icon: Building2,
-  },
-  {
-    label: "Booking Requests",
-    href: "/dashboard/owner/booking-requests",
-    icon: CalendarCheck2,
-  },
+  { label: "Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
+  { label: "Add Property", href: "/dashboard/owner/add-property", icon: PlusCircle },
+  { label: "My Properties", href: "/dashboard/owner/properties", icon: Building2 },
+  { label: "Booking Requests", href: "/dashboard/owner/booking-requests", icon: CalendarCheck2 },
 ];
 
 const accountNavigation = [
-  {
-    label: "Profile",
-    href: "/dashboard/owner/profile",
-    icon: CircleUserRound,
-  },
-  {
-    label: "Settings",
-    href: "/dashboard/owner/settings",
-    icon: Settings,
-  },
+  { label: "Profile", href: "/dashboard/owner/profile", icon: CircleUserRound },
+  { label: "Settings", href: "/dashboard/owner/settings", icon: Settings },
 ];
 
-/* =========================================================
-   THEME TOGGLE
-   No setState inside useEffect
-========================================================= */
+/* THEME */
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+
+  root.classList.toggle("dark", theme === "dark");
+  root.classList.toggle("light", theme === "light");
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+}
 
 function ThemeToggle() {
   const toggleTheme = () => {
     const root = document.documentElement;
-    const isDark = root.classList.contains("dark");
-    const nextTheme = isDark ? "light" : "dark";
 
-    root.classList.toggle("dark", nextTheme === "dark");
-    root.classList.toggle("light", nextTheme === "light");
-    root.setAttribute("data-theme", nextTheme);
-    root.style.colorScheme = nextTheme;
+    const currentTheme = root.classList.contains("dark")
+      ? "dark"
+      : "light";
+
+    const nextTheme = currentTheme === "dark" ? "light" : "dark";
+
+    applyTheme(nextTheme);
 
     try {
-      localStorage.setItem("property-rental-theme", nextTheme);
+      localStorage.setItem(THEME_KEY, nextTheme);
     } catch (error) {
       console.error("Theme saving error:", error);
     }
@@ -89,21 +72,24 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label="Toggle light and dark mode"
-      title="Toggle theme"
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 active:translate-y-0 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-orange-500/50 dark:hover:bg-zinc-800"
+      title={
+        typeof document !== "undefined" &&
+        document.documentElement.classList.contains("dark")
+          ? "Switch to light mode"
+          : "Switch to dark mode"
+      }
+      aria-label="Toggle theme"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
     >
-      <Sun className="hidden h-[18px] w-[18px] dark:block" />
-      <Moon className="h-[18px] w-[18px] dark:hidden" />
+      <Sun className="h-5 w-5 dark:hidden" />
+      <Moon className="hidden h-5 w-5 dark:block" />
     </button>
   );
 }
 
-/* =========================================================
-   BRAND
-========================================================= */
+/* BRAND */
 
-function Brand({ collapsed = false, onNavigate }) {
+function Brand({ onNavigate, collapsed = false }) {
   return (
     <Link
       href="/dashboard/owner"
@@ -117,35 +103,26 @@ function Brand({ collapsed = false, onNavigate }) {
       </div>
 
       {!collapsed && (
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-white">
-            PropertyRent
-          </p>
-
-          <p className="mt-0.5 text-[11px] text-zinc-400">
-            Owner Portal
-          </p>
+        <div>
+          <p className="text-sm font-bold text-white">PropertyRent</p>
+          <p className="mt-0.5 text-[11px] text-zinc-400">Owner Portal</p>
         </div>
       )}
     </Link>
   );
 }
 
-/* =========================================================
-   OWNER AVATAR
-========================================================= */
+/* AVATAR */
 
-function OwnerAvatar({ user, size = "h-9 w-9" }) {
-  const photo = user?.photo || user?.image || "";
+function OwnerAvatar({ user }) {
+  const image = user?.image || user?.photo;
   const initial = user?.name?.charAt(0)?.toUpperCase() || "O";
 
   return (
-    <div
-      className={`relative ${size} shrink-0 overflow-hidden rounded-full border border-orange-100 bg-orange-50 dark:border-zinc-700 dark:bg-zinc-800`}
-    >
-      {photo ? (
+    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-800">
+      {image ? (
         <Image
-          src={photo}
+          src={image}
           alt={user?.name || "Owner"}
           fill
           sizes="40px"
@@ -153,17 +130,15 @@ function OwnerAvatar({ user, size = "h-9 w-9" }) {
           unoptimized
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-orange-600 dark:text-orange-400">
+        <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
           {initial}
-        </div>
+        </span>
       )}
     </div>
   );
 }
 
-/* =========================================================
-   SIDEBAR NAVIGATION
-========================================================= */
+/* NAVIGATION */
 
 function SidebarNavigation({
   items,
@@ -173,21 +148,19 @@ function SidebarNavigation({
 }) {
   return (
     <div className="space-y-1.5">
-      {items.map((item) => {
-        const Icon = item.icon;
-
+      {items.map(({ label, href, icon: Icon }) => {
         const active =
-          item.href === "/dashboard/owner"
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
+          href === "/dashboard/owner"
+            ? pathname === href
+            : pathname === href || pathname.startsWith(`${href}/`);
 
         return (
           <Link
-            key={item.href}
-            href={item.href}
-            title={collapsed ? item.label : undefined}
+            key={href}
+            href={href}
             onClick={onNavigate}
-            className={`group relative flex h-11 items-center rounded-xl text-sm font-medium transition-all duration-200 ${
+            title={collapsed ? label : undefined}
+            className={`group flex h-11 items-center rounded-xl text-sm font-medium transition-all duration-200 ${
               collapsed ? "justify-center px-2" : "gap-3 px-3"
             } ${
               active
@@ -197,15 +170,10 @@ function SidebarNavigation({
           >
             <Icon
               className={`h-[18px] w-[18px] shrink-0 ${
-                active
-                  ? "text-white"
-                  : "text-zinc-400 group-hover:text-orange-400"
+                active ? "text-white" : "text-zinc-400 group-hover:text-orange-400"
               }`}
             />
-
-            {!collapsed && (
-              <span className="truncate">{item.label}</span>
-            )}
+            {!collapsed && <span className="truncate">{label}</span>}
           </Link>
         );
       })}
@@ -213,9 +181,7 @@ function SidebarNavigation({
   );
 }
 
-/* =========================================================
-   OWNER DASHBOARD LAYOUT
-========================================================= */
+/* OWNER LAYOUT */
 
 export default function OwnerDashboardLayout({ children }) {
   const pathname = usePathname();
@@ -226,18 +192,34 @@ export default function OwnerDashboardLayout({ children }) {
   const [user, setUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  /* =======================================================
-     OWNER AUTHORIZATION
-  ======================================================= */
+  /* Load saved theme without setState inside effect */
 
   useEffect(() => {
-    let mounted = true;
+    let theme = "dark";
 
-    const checkOwnerAccess = async () => {
+    try {
+      const savedTheme = localStorage.getItem(THEME_KEY);
+
+      if (savedTheme === "light" || savedTheme === "dark") {
+        theme = savedTheme;
+      }
+    } catch (error) {
+      console.error("Theme loading error:", error);
+    }
+
+    applyTheme(theme);
+  }, []);
+
+  /* Owner authentication */
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkOwnerAccess() {
       try {
         const session = await authClient.getSession();
 
-        if (!mounted) return;
+        if (!active) return;
 
         const currentUser = session?.data?.user;
 
@@ -247,69 +229,50 @@ export default function OwnerDashboardLayout({ children }) {
         }
 
         if (currentUser.role !== "owner") {
-          if (currentUser.role === "admin") {
-            router.replace("/dashboard/admin");
-          } else {
-            router.replace("/dashboard/tenant");
-          }
-
+          router.replace(
+            currentUser.role === "admin"
+              ? "/dashboard/admin"
+              : "/dashboard/tenant"
+          );
           return;
         }
 
         setUser(currentUser);
       } catch (error) {
-        console.error("Owner authorization error:", error);
+        console.error("Owner authentication error:", error);
 
-        if (mounted) {
+        if (active) {
           router.replace("/login");
         }
       } finally {
-        if (mounted) {
+        if (active) {
           setCheckingAuth(false);
         }
       }
-    };
+    }
 
     checkOwnerAccess();
 
     return () => {
-      mounted = false;
+      active = false;
     };
   }, [router]);
 
-  /* =======================================================
-     LOAD SAVED THEME
-     No React state update in this effect
-  ======================================================= */
+  /* Close mobile navigation on route change */
 
-  useEffect(() => {
-    try {
-      const savedTheme = localStorage.getItem(
-        "property-rental-theme"
-      );
+ useEffect(() => {
+  if (!mobileOpen) return;
 
-      const theme =
-        savedTheme === "dark" ? "dark" : "light";
+  const frame = requestAnimationFrame(() => {
+    setMobileOpen(false);
+  });
 
-      const root = document.documentElement;
-
-      root.classList.toggle("dark", theme === "dark");
-      root.classList.toggle("light", theme === "light");
-      root.setAttribute("data-theme", theme);
-      root.style.colorScheme = theme;
-    } catch (error) {
-      console.error("Theme initialization error:", error);
-    }
-  }, []);
-
-  /* =======================================================
-     LOGOUT
-  ======================================================= */
+  return () => cancelAnimationFrame(frame);
+}, [pathname]);
 
   const handleLogout = async () => {
     try {
       await authClient.signOut();
-
       router.replace("/login");
       router.refresh();
     } catch (error) {
@@ -317,37 +280,15 @@ export default function OwnerDashboardLayout({ children }) {
     }
   };
 
-  /* =======================================================
-     PAGE TITLE
-  ======================================================= */
-
   const getPageTitle = () => {
-    if (pathname.includes("booking-requests")) {
-      return "Booking Requests";
-    }
-
-    if (pathname.includes("add-property")) {
-      return "Add Property";
-    }
-
-    if (pathname.includes("properties")) {
-      return "My Properties";
-    }
-
-    if (pathname.includes("profile")) {
-      return "Profile";
-    }
-
-    if (pathname.includes("settings")) {
-      return "Settings";
-    }
+    if (pathname.includes("booking-requests")) return "Booking Requests";
+    if (pathname.includes("add-property")) return "Add Property";
+    if (pathname.includes("properties")) return "My Properties";
+    if (pathname.includes("profile")) return "Profile";
+    if (pathname.includes("settings")) return "Settings";
 
     return "Overview";
   };
-
-  /* =======================================================
-     AUTH LOADING
-  ======================================================= */
 
   if (checkingAuth) {
     return (
@@ -356,13 +297,8 @@ export default function OwnerDashboardLayout({ children }) {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500 shadow-lg shadow-orange-500/20">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           </div>
-
           <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-zinc-200">
             Checking account access...
-          </p>
-
-          <p className="mt-1 text-xs text-slate-400 dark:text-zinc-500">
-            Please wait
           </p>
         </div>
       </div>
@@ -370,21 +306,15 @@ export default function OwnerDashboardLayout({ children }) {
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-[#f7f5ef] dark:bg-zinc-950" />
-    );
+    return <div className="min-h-screen bg-[#f7f5ef] dark:bg-zinc-950" />;
   }
 
-  /* =======================================================
-     DASHBOARD
-  ======================================================= */
-
   return (
-    <div className="min-h-screen bg-[#f7f5ef] font-sans text-slate-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-screen bg-[#f7f5ef] text-slate-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100">
       {/* DESKTOP SIDEBAR */}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 hidden border-r border-zinc-800 bg-[#09090b] transition-[width] duration-300 lg:flex lg:flex-col ${
+        className={`fixed inset-y-0 left-0 z-50 hidden flex-col border-r border-slate-200 bg-white transition-[width] duration-300 dark:border-zinc-800 dark:bg-zinc-950 lg:flex ${
           collapsed ? "w-[76px]" : "w-[250px]"
         }`}
       >
@@ -418,9 +348,7 @@ export default function OwnerDashboardLayout({ children }) {
           </div>
         </nav>
 
-        {/* DESKTOP OWNER ACCOUNT */}
-
-        <div className="shrink-0 border-t border-white/10 p-3">
+        <div className="border-t border-white/10 p-3">
           <div
             className={`flex items-center rounded-xl bg-white/[0.04] ${
               collapsed ? "justify-center p-2" : "gap-3 px-2.5 py-2"
@@ -434,10 +362,7 @@ export default function OwnerDashboardLayout({ children }) {
                   <p className="truncate text-xs font-semibold text-white">
                     {user.name || "Property Owner"}
                   </p>
-
-                  <p className="truncate text-[10px] text-zinc-500">
-                    Owner Account
-                  </p>
+                  <p className="text-[10px] text-zinc-400">Owner Account</p>
                 </div>
 
                 <button
@@ -445,7 +370,7 @@ export default function OwnerDashboardLayout({ children }) {
                   onClick={handleLogout}
                   title="Logout"
                   aria-label="Logout"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-red-500/10 hover:text-red-400"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-red-500/10 hover:text-red-400"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
@@ -454,14 +379,12 @@ export default function OwnerDashboardLayout({ children }) {
           </div>
         </div>
 
-        {/* COLLAPSE BUTTON */}
-
         <button
           type="button"
           onClick={() => setCollapsed((value) => !value)}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute -right-3 top-[78px] flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-orange-50 hover:text-orange-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="absolute -right-3 top-[78px] flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-orange-300 hover:text-orange-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
         >
           {collapsed ? (
             <ChevronRight className="h-3.5 w-3.5" />
@@ -476,34 +399,34 @@ export default function OwnerDashboardLayout({ children }) {
       {mobileOpen && (
         <button
           type="button"
-          aria-label="Close navigation menu"
-          className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-[2px] lg:hidden"
+          aria-label="Close navigation"
           onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm lg:hidden"
         />
       )}
 
       {/* MOBILE SIDEBAR */}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-[70] flex w-[270px] flex-col bg-[#09090b] shadow-2xl transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-[70] flex w-[270px] flex-col border-r border-slate-200 bg-white shadow-2xl transition-transform duration-300 dark:border-zinc-800 dark:bg-zinc-950 lg:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-white/10 pr-3">
+        <div className="flex items-center justify-between border-b border-slate-200 pr-3 dark:border-zinc-800">
           <Brand onNavigate={() => setMobileOpen(false)} />
 
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
             aria-label="Close menu"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-5">
-          <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-zinc-500">
             Management
           </p>
 
@@ -514,7 +437,7 @@ export default function OwnerDashboardLayout({ children }) {
           />
 
           <div className="mt-8">
-            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-zinc-500">
               Account
             </p>
 
@@ -526,18 +449,14 @@ export default function OwnerDashboardLayout({ children }) {
           </div>
         </nav>
 
-        {/* MOBILE OWNER ACCOUNT */}
-
-        <div className="border-t border-white/10 p-3">
-          <div className="mb-2 flex items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5">
+        <div className="border-t border-slate-200 p-3 dark:border-zinc-800">
+          <div className="mb-2 flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-zinc-900">
             <OwnerAvatar user={user} />
-
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-white">
+              <p className="truncate text-xs font-semibold text-slate-900 dark:text-white">
                 {user.name || "Property Owner"}
               </p>
-
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-slate-500 dark:text-zinc-400">
                 Owner Account
               </p>
             </div>
@@ -546,7 +465,7 @@ export default function OwnerDashboardLayout({ children }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-zinc-400 transition hover:bg-red-500/10 hover:text-red-400"
+            className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
           >
             <LogOut className="h-[18px] w-[18px]" />
             Logout
@@ -554,22 +473,20 @@ export default function OwnerDashboardLayout({ children }) {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN AREA */}
 
       <div
         className={`min-h-screen transition-[padding] duration-300 ${
           collapsed ? "lg:pl-[76px]" : "lg:pl-[250px]"
         }`}
       >
-        {/* HEADER */}
-
-        <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-xl transition-colors duration-300 dark:border-zinc-800 dark:bg-zinc-950/95 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/95 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              aria-label="Open navigation menu"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 lg:hidden"
+              aria-label="Open navigation"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 lg:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -578,11 +495,7 @@ export default function OwnerDashboardLayout({ children }) {
               <span className="text-slate-400 dark:text-zinc-500">
                 Dashboard
               </span>
-
-              <span className="text-slate-300 dark:text-zinc-700">
-                /
-              </span>
-
+              <span className="text-slate-300 dark:text-zinc-700">/</span>
               <span className="font-semibold text-slate-800 dark:text-zinc-200">
                 {getPageTitle()}
               </span>
@@ -592,8 +505,7 @@ export default function OwnerDashboardLayout({ children }) {
               <p className="text-sm font-semibold text-slate-900 dark:text-white">
                 {getPageTitle()}
               </p>
-
-              <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+              <p className="text-[10px] text-slate-500 dark:text-zinc-500">
                 Owner Portal
               </p>
             </div>
@@ -606,8 +518,7 @@ export default function OwnerDashboardLayout({ children }) {
               <p className="max-w-[160px] truncate text-xs font-semibold text-slate-900 dark:text-white">
                 {user.name || "Property Owner"}
               </p>
-
-              <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+              <p className="text-[10px] text-slate-500 dark:text-zinc-500">
                 Owner
               </p>
             </div>
@@ -616,9 +527,7 @@ export default function OwnerDashboardLayout({ children }) {
           </div>
         </header>
 
-        {/* PAGE CONTENT */}
-
-        <main className="min-h-[calc(100vh-72px)] w-full overflow-x-hidden bg-[#f7f5ef] transition-colors duration-300 dark:bg-zinc-950">
+        <main className="min-h-[calc(100vh-72px)] w-full overflow-x-hidden bg-[#f7f5ef] text-slate-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100">
           {children}
         </main>
       </div>

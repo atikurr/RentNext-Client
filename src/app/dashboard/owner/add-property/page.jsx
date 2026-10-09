@@ -1,10 +1,9 @@
-"use client";
 
+"use client";
+import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-
 import {
   ArrowLeft,
   Building2,
@@ -14,13 +13,9 @@ import {
   MapPin,
   Plus,
   Trash2,
+  XCircle,
 } from "lucide-react";
-
-import {
-  toast,
-  ToastContainer,
-} from "react-toastify";
-
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { authClient } from "@/lib/auth-client";
@@ -48,6 +43,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 const propertyTypes = [
   "Apartment",
   "House",
@@ -58,12 +56,7 @@ const propertyTypes = [
   "Other",
 ];
 
-const rentTypes = [
-  "Monthly",
-  "Yearly",
-  "Weekly",
-  "Daily",
-];
+const rentTypes = ["Monthly", "Yearly", "Weekly", "Daily"];
 
 const initialForm = {
   title: "",
@@ -79,25 +72,31 @@ const initialForm = {
   extraFeatures: "",
 };
 
+const inputClass =
+  "h-10 rounded-lg border-zinc-200 bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-orange-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white";
+
+const cardClass =
+  "border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
+
+const labelClass =
+  "text-sm font-medium text-zinc-800 dark:text-zinc-200";
+
+function parseList(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function AddPropertyPage() {
   const router = useRouter();
 
-  const [form, setForm] =
-    useState(initialForm);
+  const [form, setForm] = useState(initialForm);
+  const [images, setImages] = useState([""]);
+  const [imageErrors, setImageErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  const [images, setImages] =
-    useState([""]);
-
-  const [imagePreviews, setImagePreviews] =
-    useState([]);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const updateField = (
-    field,
-    value
-  ) => {
+  const updateField = (field, value) => {
     setForm((previous) => ({
       ...previous,
       [field]: value,
@@ -105,1195 +104,773 @@ export default function AddPropertyPage() {
   };
 
   const addImageField = () => {
-    setImages((previous) => [
-      ...previous,
-      "",
-    ]);
+    setImages((previous) => [...previous, ""]);
   };
 
-  const removeImageField = (
-    index
-  ) => {
-    if (images.length === 1) {
-      return;
-    }
-
+  const removeImageField = (index) => {
     setImages((previous) =>
-      previous.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      )
+      previous.filter((_, imageIndex) => imageIndex !== index)
     );
 
-    setImagePreviews((previous) =>
-      previous.filter(
-        (_, imageIndex) =>
-          imageIndex !== index
-      )
-    );
-  };
+    setImageErrors((previous) => {
+      const updated = {};
 
-  const updateImage = (
-    index,
-    value
-  ) => {
-    setImages((previous) => {
-      const updated = [
-        ...previous,
-      ];
+      Object.entries(previous).forEach(([key, value]) => {
+        const oldIndex = Number(key);
 
-      updated[index] = value;
-
-      return updated;
-    });
-
-    setImagePreviews((previous) => {
-      const updated = [
-        ...previous,
-      ];
-
-      updated[index] = value;
+        if (oldIndex < index) updated[oldIndex] = value;
+        if (oldIndex > index) updated[oldIndex - 1] = value;
+      });
 
       return updated;
     });
   };
 
-  const parseList = (value) => {
-    return value
-      .split(",")
-      .map((item) =>
-        item.trim()
+  const updateImage = (index, value) => {
+    setImages((previous) =>
+      previous.map((image, imageIndex) =>
+        imageIndex === index ? value : image
       )
-      .filter(Boolean);
+    );
+
+    setImageErrors((previous) => ({
+      ...previous,
+      [index]: false,
+    }));
   };
 
   const validateForm = () => {
     if (!form.title.trim()) {
-      toast.error(
-        "Property title is required."
-      );
-
+      toast.error("Property title is required.");
       return false;
     }
 
     if (!form.description.trim()) {
-      toast.error(
-        "Property description is required."
-      );
-
+      toast.error("Property description is required.");
       return false;
     }
 
     if (!form.location.trim()) {
-      toast.error(
-        "Property location is required."
-      );
-
+      toast.error("Property location is required.");
       return false;
     }
 
     if (!form.type) {
-      toast.error(
-        "Please select a property type."
-      );
-
+      toast.error("Please select a property type.");
       return false;
     }
 
     if (
       form.rent === "" ||
-      Number(form.rent) < 0
+      !Number.isFinite(Number(form.rent)) ||
+      Number(form.rent) <= 0
     ) {
-      toast.error(
-        "Please enter a valid rent amount."
-      );
-
+      toast.error("Enter a valid rent amount.");
       return false;
     }
 
     if (
       form.bedrooms === "" ||
+      !Number.isInteger(Number(form.bedrooms)) ||
       Number(form.bedrooms) < 0
     ) {
-      toast.error(
-        "Please enter the number of bedrooms."
-      );
-
+      toast.error("Enter a valid number of bedrooms.");
       return false;
     }
 
     if (
       form.bathrooms === "" ||
+      !Number.isInteger(Number(form.bathrooms)) ||
       Number(form.bathrooms) < 0
     ) {
-      toast.error(
-        "Please enter the number of bathrooms."
-      );
-
+      toast.error("Enter a valid number of bathrooms.");
       return false;
     }
 
     if (
       form.size === "" ||
+      !Number.isFinite(Number(form.size)) ||
       Number(form.size) <= 0
     ) {
-      toast.error(
-        "Please enter a valid property size."
-      );
-
+      toast.error("Enter a valid property size.");
       return false;
     }
 
-    const validImages =
-      images.filter(
-        (image) =>
-          image.trim()
-      );
+    const validImages = images
+      .map((image) => image.trim())
+      .filter(Boolean);
 
-    if (
-      validImages.length === 0
-    ) {
-      toast.error(
-        "Please add at least one property image."
-      );
+    if (!validImages.length) {
+      toast.error("Add at least one property image URL.");
+      return false;
+    }
 
+    for (const image of validImages) {
+      try {
+        const url = new URL(image);
+
+        if (!["http:", "https:"].includes(url.protocol)) {
+          toast.error("Image URLs must use HTTP or HTTPS.");
+          return false;
+        }
+      } catch {
+        toast.error("Please enter a valid image URL.");
+        return false;
+      }
+    }
+
+    if (Object.values(imageErrors).some(Boolean)) {
+      toast.error("Please correct or remove broken image URLs.");
       return false;
     }
 
     return true;
   };
 
-  const handleSubmit = async (
-    event
-  ) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+    if (loading || !validateForm()) return;
 
     try {
       setLoading(true);
 
-      const tokenResult =
-        await authClient.token();
-
-      const token =
-        tokenResult?.data?.token;
+      const tokenResult = await authClient.token();
+      const token = tokenResult?.data?.token;
 
       if (!token) {
-        toast.error(
-          "Your session has expired. Please login again."
-        );
-
-        setTimeout(() => {
-          router.push("/login");
-        }, 1000);
-
+        toast.error("Your session has expired. Please log in again.");
+        router.push("/login");
         return;
       }
 
-      const validImages =
-        images
-          .map((image) =>
-            image.trim()
-          )
-          .filter(Boolean);
-
       const payload = {
-        title:
-          form.title.trim(),
-
-        description:
-          form.description.trim(),
-
-        location:
-          form.location.trim(),
-
+        title: form.title.trim(),
+        description: form.description.trim(),
+        location: form.location.trim(),
         type: form.type,
-
-        rent: Number(
-          form.rent
-        ),
-
-        rentType:
-          form.rentType,
-
-        bedrooms: Number(
-          form.bedrooms
-        ),
-
-        bathrooms: Number(
-          form.bathrooms
-        ),
-
-        size: Number(
-          form.size
-        ),
-
-        amenities:
-          parseList(
-            form.amenities
-          ),
-
-        extraFeatures:
-          parseList(
-            form.extraFeatures
-          ),
-
-        images:
-          validImages,
+        rent: Number(form.rent),
+        rentType: form.rentType,
+        bedrooms: Number(form.bedrooms),
+        bathrooms: Number(form.bathrooms),
+        size: Number(form.size),
+        amenities: parseList(form.amenities),
+        extraFeatures: parseList(form.extraFeatures),
+        images: images.map((image) => image.trim()).filter(Boolean),
       };
 
-      const response = await fetch(
-  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/properties`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  }
-);
+      const response = await fetch(`${API_URL}/api/properties`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.message ||
-            "Failed to create property."
-        );
+        throw new Error(data?.message || "Failed to create property.");
       }
 
-      toast.success(
-        "Property submitted successfully!",
-        {
-          position:
-            "bottom-right",
-
-          autoClose: 3000,
-
-          hideProgressBar:
-            false,
-
-          closeOnClick: true,
-
-          pauseOnHover: true,
-
-          draggable: true,
-        }
-      );
+      toast.success("Property submitted successfully!");
 
       setForm(initialForm);
-
       setImages([""]);
-
-      setImagePreviews([]);
+      setImageErrors({});
 
       setTimeout(() => {
-        router.push(
-          "/dashboard/owner/properties"
-        );
-      }, 1500);
+        router.push("/dashboard/owner/properties");
+      }, 1000);
     } catch (error) {
-      console.error(
-        "Add property error:",
-        error
-      );
-
-      toast.error(
-        error.message ||
-          "Something went wrong while adding the property.",
-        {
-          position:
-            "bottom-right",
-
-          autoClose: 4000,
-
-          hideProgressBar:
-            false,
-
-          closeOnClick: true,
-
-          pauseOnHover: true,
-
-          draggable: true,
-        }
-      );
+      console.error("Add property error:", error);
+      toast.error(error.message || "Failed to add property.");
     } finally {
       setLoading(false);
     }
   };
 
+  const clearForm = () => {
+    setForm(initialForm);
+    setImages([""]);
+    setImageErrors({});
+  };
+
   return (
-    <>
-      <div className="min-h-full bg-zinc-100/70 dark:bg-zinc-950">
-        <div className="mx-auto w-full max-w-[1350px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-
-          {/* PAGE HEADER */}
-
-          <div className="mb-8">
-            <Button
-              variant="ghost"
-              asChild
-              className="-ml-2 mb-4 rounded-lg text-zinc-500 hover:text-zinc-950 dark:hover:text-white"
-            >
-              <Link href="/dashboard/owner">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
-              </Link>
-            </Button>
-
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-              <div>
-                <div className="mb-2 flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className="rounded-lg"
-                  >
-                    Owner Portal
-                  </Badge>
-
-                  <span className="text-xs text-zinc-400">
-                    / Add Property
-                  </span>
-                </div>
-
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Add New Property
-                </h1>
-
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-                  Add your property details
-                  and submit it for admin
-                  approval.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-zinc-500">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                Admin approval required
-              </div>
-            </div>
-          </div>
-
-          {/* FORM */}
-
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_350px]">
-
-              {/* LEFT */}
-
-              <div className="space-y-6">
-
-                {/* BASIC INFORMATION */}
-
-                <Card className="border-zinc-200 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                        <Building2 className="h-5 w-5" />
-                      </div>
-
-                      <div>
-                        <CardTitle className="text-base">
-                          Basic Information
-                        </CardTitle>
-
-                        <CardDescription>
-                          Tell tenants about your property.
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-5">
-
-                    {/* TITLE */}
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="title"
-                        className="text-sm font-medium"
-                      >
-                        Property Title
-
-                        <span className="ml-1 text-red-500">
-                          *
-                        </span>
-                      </label>
-
-                      <Input
-                        id="title"
-                        value={form.title}
-                        onChange={(event) =>
-                          updateField(
-                            "title",
-                            event.target.value
-                          )
-                        }
-                        placeholder="e.g. Modern 3 Bedroom Apartment"
-                        className="h-11 rounded-xl"
-                        maxLength={120}
-                      />
-
-                      <div className="flex justify-end">
-                        <span className="text-xs text-zinc-400">
-                          {form.title.length}/120
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* DESCRIPTION */}
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="description"
-                        className="text-sm font-medium"
-                      >
-                        Description
-
-                        <span className="ml-1 text-red-500">
-                          *
-                        </span>
-                      </label>
-
-                      <Textarea
-                        id="description"
-                        value={
-                          form.description
-                        }
-                        onChange={(event) =>
-                          updateField(
-                            "description",
-                            event.target.value
-                          )
-                        }
-                        placeholder="Describe the property, location, facilities, and key features..."
-                        className="min-h-[150px] resize-none rounded-xl"
-                        maxLength={2000}
-                      />
-
-                      <div className="flex justify-end">
-                        <span className="text-xs text-zinc-400">
-                          {
-                            form.description
-                              .length
-                          }
-                          /2000
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* LOCATION */}
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="location"
-                        className="text-sm font-medium"
-                      >
-                        Location
-
-                        <span className="ml-1 text-red-500">
-                          *
-                        </span>
-                      </label>
-
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-
-                        <Input
-                          id="location"
-                          value={
-                            form.location
-                          }
-                          onChange={(event) =>
-                            updateField(
-                              "location",
-                              event.target.value
-                            )
-                          }
-                          placeholder="e.g. Dhanmondi, Dhaka"
-                          className="h-11 rounded-xl pl-10"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* PROPERTY DETAILS */}
-
-                <Card className="border-zinc-200 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      Property Details
-                    </CardTitle>
-
-                    <CardDescription>
-                      Provide the key specifications
-                      of your property.
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent>
-                    <div className="grid gap-5 sm:grid-cols-2">
-
-                      {/* TYPE */}
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                          Property Type
-
-                          <span className="ml-1 text-red-500">
-                            *
-                          </span>
-                        </label>
-
-                        <Select
-                          value={form.type}
-                          onValueChange={(value) =>
-                            updateField(
-                              "type",
-                              value
-                            )
-                          }
-                        >
-                          <SelectTrigger className="h-11 rounded-xl">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-
-                          <SelectContent>
-                            {propertyTypes.map(
-                              (type) => (
-                                <SelectItem
-                                  key={type}
-                                  value={type}
-                                >
-                                  {type}
-                                </SelectItem>
-                              )
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* RENT */}
-
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="rent"
-                          className="text-sm font-medium"
-                        >
-                          Rent Amount
-
-                          <span className="ml-1 text-red-500">
-                            *
-                          </span>
-                        </label>
-
-                        <div className="flex gap-2">
-                          <Input
-                            id="rent"
-                            type="number"
-                            min="0"
-                            value={form.rent}
-                            onChange={(event) =>
-                              updateField(
-                                "rent",
-                                event.target.value
-                              )
-                            }
-                            placeholder="35000"
-                            className="h-11 flex-1 rounded-xl"
-                          />
-
-                          <Select
-                            value={
-                              form.rentType
-                            }
-                            onValueChange={(
-                              value
-                            ) =>
-                              updateField(
-                                "rentType",
-                                value
-                              )
-                            }
-                          >
-                            <SelectTrigger className="h-11 w-[125px] rounded-xl">
-                              <SelectValue />
-                            </SelectTrigger>
-
-                            <SelectContent>
-                              {rentTypes.map(
-                                (type) => (
-                                  <SelectItem
-                                    key={type}
-                                    value={type}
-                                  >
-                                    {type}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      {/* BEDROOMS */}
-
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="bedrooms"
-                          className="text-sm font-medium"
-                        >
-                          Bedrooms
-
-                          <span className="ml-1 text-red-500">
-                            *
-                          </span>
-                        </label>
-
-                        <Input
-                          id="bedrooms"
-                          type="number"
-                          min="0"
-                          value={
-                            form.bedrooms
-                          }
-                          onChange={(event) =>
-                            updateField(
-                              "bedrooms",
-                              event.target.value
-                            )
-                          }
-                          placeholder="3"
-                          className="h-11 rounded-xl"
-                        />
-                      </div>
-
-                      {/* BATHROOMS */}
-
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="bathrooms"
-                          className="text-sm font-medium"
-                        >
-                          Bathrooms
-
-                          <span className="ml-1 text-red-500">
-                            *
-                          </span>
-                        </label>
-
-                        <Input
-                          id="bathrooms"
-                          type="number"
-                          min="0"
-                          value={
-                            form.bathrooms
-                          }
-                          onChange={(event) =>
-                            updateField(
-                              "bathrooms",
-                              event.target.value
-                            )
-                          }
-                          placeholder="2"
-                          className="h-11 rounded-xl"
-                        />
-                      </div>
-
-                      {/* SIZE */}
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <label
-                          htmlFor="size"
-                          className="text-sm font-medium"
-                        >
-                          Property Size
-
-                          <span className="ml-1 text-red-500">
-                            *
-                          </span>
-                        </label>
-
-                        <div className="relative">
-                          <Input
-                            id="size"
-                            type="number"
-                            min="0"
-                            value={form.size}
-                            onChange={(event) =>
-                              updateField(
-                                "size",
-                                event.target.value
-                              )
-                            }
-                            placeholder="1200"
-                            className="h-11 rounded-xl pr-16"
-                          />
-
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">
-                            sq ft
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* AMENITIES */}
-
-                <Card className="border-zinc-200 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      Amenities & Features
-                    </CardTitle>
-
-                    <CardDescription>
-                      Separate multiple items using commas.
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent className="space-y-5">
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="amenities"
-                        className="text-sm font-medium"
-                      >
-                        Amenities
-                      </label>
-
-                      <Textarea
-                        id="amenities"
-                        value={
-                          form.amenities
-                        }
-                        onChange={(event) =>
-                          updateField(
-                            "amenities",
-                            event.target.value
-                          )
-                        }
-                        placeholder="WiFi, Parking, Security, Elevator"
-                        className="min-h-[100px] resize-none rounded-xl"
-                      />
-
-                      {form.amenities && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {parseList(
-                            form.amenities
-                          ).map(
-                            (amenity) => (
-                              <Badge
-                                key={amenity}
-                                variant="secondary"
-                                className="rounded-lg"
-                              >
-                                {amenity}
-                              </Badge>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="extraFeatures"
-                        className="text-sm font-medium"
-                      >
-                        Extra Features
-                      </label>
-
-                      <Textarea
-                        id="extraFeatures"
-                        value={
-                          form.extraFeatures
-                        }
-                        onChange={(event) =>
-                          updateField(
-                            "extraFeatures",
-                            event.target.value
-                          )
-                        }
-                        placeholder="Balcony, Rooftop, Furnished Kitchen"
-                        className="min-h-[100px] resize-none rounded-xl"
-                      />
-
-                      {form.extraFeatures && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {parseList(
-                            form.extraFeatures
-                          ).map(
-                            (feature) => (
-                              <Badge
-                                key={feature}
-                                variant="outline"
-                                className="rounded-lg"
-                              >
-                                {feature}
-                              </Badge>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* PROPERTY IMAGES */}
-
-                <Card className="border-zinc-200 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                        <ImagePlus className="h-5 w-5" />
-                      </div>
-
-                      <div>
-                        <CardTitle className="text-base">
-                          Property Images
-                        </CardTitle>
-
-                        <CardDescription>
-                          Add image URLs for your property.
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-
-                    {images.map(
-                      (
-                        image,
-                        index
-                      ) => (
-                        <div
-                          key={index}
-                          className="flex gap-2"
-                        >
-                          <Input
-                            type="url"
-                            value={image}
-                            onChange={(
-                              event
-                            ) =>
-                              updateImage(
-                                index,
-                                event
-                                  .target
-                                  .value
-                              )
-                            }
-                            placeholder="https://example.com/property.jpg"
-                            className="h-11 rounded-xl"
-                          />
-
-                          {images.length >
-                            1 && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              onClick={() =>
-                                removeImageField(
-                                  index
-                                )
-                              }
-                              className="h-11 w-11 shrink-0 rounded-xl text-zinc-500 hover:border-red-200 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      )
-                    )}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={
-                        addImageField
-                      }
-                      className="w-full rounded-xl border-dashed"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Another Image
-                    </Button>
-
-                    {/* IMAGE PREVIEW */}
-
-                    {imagePreviews.some(
-                      (image) => image
-                    ) && (
-                      <div className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-3">
-                        {imagePreviews.map(
-                          (
-                            image,
-                            index
-                          ) => {
-                            if (
-                              !image
-                            ) {
-                              return null;
-                            }
-
-                            return (
-                              <div
-                                key={`${image}-${index}`}
-                                className="relative aspect-video overflow-hidden rounded-xl border bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800"
-                              >
-                                <Image
-                                  src={image}
-                                  alt={`Property preview ${
-                                    index +
-                                    1
-                                  }`}
-                                  fill
-                                  sizes="(max-width: 640px) 50vw, 33vw"
-                                  className="object-cover"
-                                  unoptimized
-                                />
-
-                                <div className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-1 text-[10px] font-medium text-white">
-                                  Image{" "}
-                                  {index +
-                                    1}
-                                </div>
-                              </div>
-                            );
-                          }
-                        )}
-                      </div>
-                    )}
-
-                    <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-                      <p className="text-xs leading-5 text-zinc-500">
-                        Add at least one valid image URL.
-                        You can use ImgBB, Cloudinary,
-                        or another public image hosting
-                        service.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* RIGHT SIDEBAR */}
-
-              <div className="space-y-6">
-
-                {/* SUBMIT CARD */}
-
-                <Card className="border-zinc-200 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:sticky lg:top-24">
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      Submit Property
-                    </CardTitle>
-
-                    <CardDescription>
-                      Review your information before
-                      submitting.
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent className="space-y-5">
-
-                    <div className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/60">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-
-                        <div>
-                          <p className="text-sm font-medium">
-                            Admin Review
-                          </p>
-
-                          <p className="mt-1 text-xs leading-5 text-zinc-500">
-                            Your property will remain
-                            Pending until an administrator
-                            approves it.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 text-sm">
-
-                      <div className="flex justify-between gap-4">
-                        <span className="text-zinc-500">
-                          Property Type
-                        </span>
-
-                        <span className="font-medium">
-                          {form.type ||
-                            "Not selected"}
-                        </span>
-                      </div>
-
-                      <Separator />
-
-                      <div className="flex justify-between gap-4">
-                        <span className="text-zinc-500">
-                          Rent
-                        </span>
-
-                        <span className="font-medium">
-                          {form.rent
-                            ? `৳${Number(
-                                form.rent
-                              ).toLocaleString()} / ${
-                                form.rentType
-                              }`
-                            : "Not specified"}
-                        </span>
-                      </div>
-
-                      <Separator />
-
-                      <div className="flex justify-between gap-4">
-                        <span className="text-zinc-500">
-                          Bedrooms
-                        </span>
-
-                        <span className="font-medium">
-                          {form.bedrooms ||
-                            "—"}
-                        </span>
-                      </div>
-
-                      <Separator />
-
-                      <div className="flex justify-between gap-4">
-                        <span className="text-zinc-500">
-                          Bathrooms
-                        </span>
-
-                        <span className="font-medium">
-                          {form.bathrooms ||
-                            "—"}
-                        </span>
-                      </div>
-
-                      <Separator />
-
-                      <div className="flex justify-between gap-4">
-                        <span className="text-zinc-500">
-                          Images
-                        </span>
-
-                        <span className="font-medium">
-                          {
-                            images.filter(
-                              (image) =>
-                                image.trim()
-                            ).length
-                          }
-                        </span>
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={loading}
-                      className="h-11 w-full rounded-xl"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Submitting...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                          Submit Property
-                        </>
-                      )}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={loading}
-                      onClick={() =>
-                        router.push(
-                          "/dashboard/owner"
-                        )
-                      }
-                      className="h-11 w-full rounded-xl"
-                    >
-                      Cancel
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* TIPS */}
-
-                <Card className="border-zinc-200 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <CardHeader>
-                    <CardTitle className="text-sm">
-                      Listing Tips
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent>
-                    <ul className="space-y-3 text-xs leading-5 text-zinc-500">
-
-                      <li className="flex gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
-
-                        Use a clear and descriptive
-                        property title.
-                      </li>
-
-                      <li className="flex gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
-
-                        Add accurate rent and property
-                        specifications.
-                      </li>
-
-                      <li className="flex gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
-
-                        Include useful amenities and
-                        features.
-                      </li>
-
-                      <li className="flex gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-400" />
-
-                        Use high-quality property
-                        images.
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* TOAST */}
-
+    <main className="min-h-screen bg-zinc-100/70 text-zinc-950 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100">
       <ToastContainer
         position="bottom-right"
         autoClose={3000}
         newestOnTop
         closeOnClick
-        pauseOnFocusLoss
-        draggable
         pauseOnHover
-        theme="light"
+        theme="colored"
       />
-    </>
+
+      <div className="mx-auto w-full max-w-[1350px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        {/* HEADER */}
+
+        <header className="mb-7">
+          <Button
+            variant="ghost"
+            asChild
+            className="-ml-2 mb-3 rounded-lg text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-white"
+          >
+            <Link href="/dashboard/owner">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Link>
+          </Button>
+
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <Badge
+                variant="outline"
+                className="mb-3 rounded-lg border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-400"
+              >
+                Owner Portal
+              </Badge>
+
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                Add New Property
+              </h1>
+
+              <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                Add your property details, images and rental information.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              Property listing
+            </div>
+          </div>
+        </header>
+
+        <form onSubmit={handleSubmit}>
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="space-y-5">
+              {/* BASIC INFORMATION */}
+
+              <Card className={cardClass}>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <CardTitle className="text-base">
+                        Basic Information
+                      </CardTitle>
+                      <CardDescription className="dark:text-zinc-400">
+                        Tell tenants about your property.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="title" className={labelClass}>
+                      Property Title *
+                    </label>
+
+                    <Input
+                      id="title"
+                      required
+                      maxLength={120}
+                      value={form.title}
+                      onChange={(e) => updateField("title", e.target.value)}
+                      placeholder="e.g. Modern 3 Bedroom Apartment"
+                      className={inputClass}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="description" className={labelClass}>
+                      Description *
+                    </label>
+
+                    <Textarea
+                      id="description"
+                      required
+                      maxLength={2000}
+                      value={form.description}
+                      onChange={(e) =>
+                        updateField("description", e.target.value)
+                      }
+                      placeholder="Describe your property and facilities..."
+                      className="min-h-28 resize-y rounded-lg border-zinc-200 bg-white text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="location" className={labelClass}>
+                      Location *
+                    </label>
+
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+
+                      <Input
+                        id="location"
+                        required
+                        value={form.location}
+                        onChange={(e) =>
+                          updateField("location", e.target.value)
+                        }
+                        placeholder="e.g. Dhanmondi, Dhaka"
+                        className={`${inputClass} pl-9`}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* PROPERTY DETAILS */}
+
+              <Card className={cardClass}>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Property Details
+                  </CardTitle>
+                  <CardDescription className="dark:text-zinc-400">
+                    Enter property specifications and rent.
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className={labelClass}>Property Type *</label>
+
+                      <Select
+                        value={form.type}
+                        onValueChange={(value) => updateField("type", value)}
+                      >
+                        <SelectTrigger className={inputClass}>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {propertyTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="rent" className={labelClass}>
+                        Rent Amount (৳) *
+                      </label>
+
+                      <Input
+                        id="rent"
+                        type="number"
+                        min="1"
+                        required
+                        value={form.rent}
+                        onChange={(e) => updateField("rent", e.target.value)}
+                        placeholder="35000"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={labelClass}>Rent Type</label>
+
+                      <Select
+                        value={form.rentType}
+                        onValueChange={(value) =>
+                          updateField("rentType", value)
+                        }
+                      >
+                        <SelectTrigger className={inputClass}>
+                          <SelectValue />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {rentTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="bedrooms" className={labelClass}>
+                        Bedrooms *
+                      </label>
+
+                      <Input
+                        id="bedrooms"
+                        type="number"
+                        min="0"
+                        step="1"
+                        required
+                        value={form.bedrooms}
+                        onChange={(e) =>
+                          updateField("bedrooms", e.target.value)
+                        }
+                        placeholder="3"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="bathrooms" className={labelClass}>
+                        Bathrooms *
+                      </label>
+
+                      <Input
+                        id="bathrooms"
+                        type="number"
+                        min="0"
+                        step="1"
+                        required
+                        value={form.bathrooms}
+                        onChange={(e) =>
+                          updateField("bathrooms", e.target.value)
+                        }
+                        placeholder="2"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="size" className={labelClass}>
+                        Property Size (sq ft) *
+                      </label>
+
+                      <Input
+                        id="size"
+                        type="number"
+                        min="1"
+                        required
+                        value={form.size}
+                        onChange={(e) => updateField("size", e.target.value)}
+                        placeholder="1200"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AMENITIES */}
+
+              <Card className={cardClass}>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Amenities & Features
+                  </CardTitle>
+                  <CardDescription className="dark:text-zinc-400">
+                    Separate items with commas.
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="amenities" className={labelClass}>
+                      Amenities
+                    </label>
+
+                    <Textarea
+                      id="amenities"
+                      value={form.amenities}
+                      onChange={(e) =>
+                        updateField("amenities", e.target.value)
+                      }
+                      placeholder="WiFi, Parking, Security, Elevator"
+                      className="min-h-24 rounded-lg border-zinc-200 bg-white text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                    />
+
+                    <div className="flex flex-wrap gap-2">
+                      {parseList(form.amenities).map((item) => (
+                        <Badge key={item} variant="secondary">
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+                  <div className="space-y-2">
+                    <label htmlFor="extraFeatures" className={labelClass}>
+                      Extra Features
+                    </label>
+
+                    <Textarea
+                      id="extraFeatures"
+                      value={form.extraFeatures}
+                      onChange={(e) =>
+                        updateField("extraFeatures", e.target.value)
+                      }
+                      placeholder="Balcony, Rooftop, Furnished Kitchen"
+                      className="min-h-24 rounded-lg border-zinc-200 bg-white text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                    />
+
+                    <div className="flex flex-wrap gap-2">
+                      {parseList(form.extraFeatures).map((item) => (
+                        <Badge key={item} variant="outline">
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* PROPERTY IMAGES */}
+
+              <Card className={cardClass}>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
+                      <ImagePlus className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <CardTitle className="text-base">
+                        Property Images
+                      </CardTitle>
+                      <CardDescription className="dark:text-zinc-400">
+                        Add image URLs for your property.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-3">
+                  {images.map((image, index) => (
+                    <div key={index} className="space-y-2">
+                      {/* Compact URL field */}
+
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="url"
+                          value={image}
+                          onChange={(e) =>
+                            updateImage(index, e.target.value)
+                          }
+                          placeholder="https://example.com/property.jpg"
+                          aria-label={`Property image URL ${index + 1}`}
+                          className="h-10 min-w-0 flex-1 rounded-lg border-zinc-200 bg-white text-xs text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white sm:text-sm"
+                        />
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          disabled={images.length === 1}
+                          onClick={() => removeImageField(index)}
+                          aria-label="Remove image"
+                          className="h-10 w-10 shrink-0 rounded-lg"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Small preview below the URL */}
+
+                      {image.trim() && (
+                        <div className="relative w-full max-w-[320px] overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800">
+                          {imageErrors[index] ? (
+                            <div className="flex h-36 flex-col items-center justify-center gap-2 px-3 text-center">
+                              <XCircle className="h-6 w-6 text-red-500" />
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Image could not be loaded. Check the URL.
+                              </p>
+                            </div>
+                          ) : (
+                            <Image
+  src={image.trim()}
+  alt={`Property preview ${index + 1}`}
+  width={1200}
+  height={700}
+  unoptimized
+  className="h-56 w-full rounded-xl object-cover sm:h-64"
+  onLoad={() => {
+    setImageErrors((previous) => ({
+      ...previous,
+      [index]: false,
+    }));
+  }}
+  onError={() => {
+    setImageErrors((previous) => ({
+      ...previous,
+      [index]: true,
+    }));
+  }}
+/>
+                          )}
+
+                          {!imageErrors[index] && (
+                            <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-1 text-[10px] font-medium text-white">
+                              Image {index + 1}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addImageField}
+                    className="h-9 w-full rounded-lg border-dashed border-zinc-300 text-sm dark:border-zinc-700"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Another Image
+                  </Button>
+
+                  <p className="rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
+                    Add at least one valid image URL. Public image-hosting
+                    links work best.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* SUMMARY */}
+
+            <aside>
+              <Card className={`${cardClass} lg:sticky lg:top-24`}>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Submission Summary
+                  </CardTitle>
+                  <CardDescription className="dark:text-zinc-400">
+                    Review your listing before submitting.
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-5">
+                  <div className="rounded-xl bg-orange-50 p-4 dark:bg-orange-500/10">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-white">
+                        <Building2 className="h-5 w-5" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-semibold text-zinc-900 dark:text-white">
+                          {form.title || "New Property"}
+                        </p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {form.type || "Property type not selected"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 text-sm">
+                    <SummaryRow
+                      label="Location"
+                      value={form.location || "Not entered"}
+                    />
+
+                    <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+                    <SummaryRow
+                      label="Rent"
+                      value={
+                        form.rent
+                          ? `৳${Number(form.rent).toLocaleString("en-BD")} / ${form.rentType.toLowerCase()}`
+                          : "Not entered"
+                      }
+                    />
+
+                    <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+                    <SummaryRow
+                      label="Bedrooms"
+                      value={form.bedrooms || "—"}
+                    />
+
+                    <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+                    <SummaryRow
+                      label="Bathrooms"
+                      value={form.bathrooms || "—"}
+                    />
+
+                    <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+                    <SummaryRow
+                      label="Size"
+                      value={form.size ? `${form.size} sq ft` : "—"}
+                    />
+
+                    <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+                    <SummaryRow
+                      label="Images"
+                      value={images.filter((image) => image.trim()).length}
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <p className="text-xs leading-5 text-emerald-800 dark:text-emerald-300">
+                        Check your details and image links before submitting.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="h-11 w-full rounded-xl bg-orange-500 font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Submit Property
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={loading}
+                    onClick={clearForm}
+                    className="h-10 w-full rounded-xl dark:border-zinc-700 dark:bg-zinc-900"
+                  >
+                    Clear Form
+                  </Button>
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}
+
+function SummaryRow({ label, value }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-zinc-500 dark:text-zinc-400">{label}</span>
+      <span className="max-w-[65%] break-words text-right font-medium text-zinc-900 dark:text-white">
+        {value}
+      </span>
+    </div>
   );
 }
