@@ -37,7 +37,8 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { authClient } from "@/lib/auth-client";
 
-const API_URL = "http://localhost:5000";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 /*
 |--------------------------------------------------------------------------

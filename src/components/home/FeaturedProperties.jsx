@@ -14,7 +14,8 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 
-const API_URL = "http://localhost:5000";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 const formatCurrency = (amount) => {
   return `৳${Number(amount || 0).toLocaleString("en-BD")}`;

@@ -345,25 +345,17 @@ export default function AddPropertyPage() {
           validImages,
       };
 
-      const response =
-        await fetch(
-          "http://localhost:5000/api/properties",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-
-              Authorization:
-                `Bearer ${token}`,
-            },
-
-            body: JSON.stringify(
-              payload
-            ),
-          }
-        );
+      const response = await fetch(
+  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/properties`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  }
+);
 
       const data =
         await response.json();

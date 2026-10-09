@@ -24,7 +24,8 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { toast } from "@/components/ui/toast";
 
-const API_URL = "http://localhost:5000";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 const STATUS_OPTIONS = [
   {
