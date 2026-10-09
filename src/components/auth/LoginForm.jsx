@@ -210,21 +210,16 @@ export default function LoginForm() {
       // SOCIAL AUTH
       // ---------------------------------------------------
 
-      const { data, error } =
-        await authClient.signIn.social({
-          provider,
+     // SOCIAL AUTH
+const frontendURL = window.location.origin;
 
-          callbackURL:
-            `http://localhost:3000${finalCallbackUrl}`,
-
-          errorCallbackURL:
-            "http://localhost:3000/login",
-
-          newUserCallbackURL:
-            `http://localhost:3000${finalCallbackUrl}`,
-
-          disableRedirect: true,
-        });
+const { data, error } = await authClient.signIn.social({
+  provider,
+  callbackURL: `${frontendURL}${finalCallbackUrl}`,
+  errorCallbackURL: `${frontendURL}/login`,
+  newUserCallbackURL: `${frontendURL}${finalCallbackUrl}`,
+  disableRedirect: true,
+});
 
       if (error) {
         throw new Error(
