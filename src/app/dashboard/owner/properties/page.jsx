@@ -365,7 +365,7 @@ export default function MyPropertiesPage() {
     }
 
     // Ensure this route matches your existing edit page.
-    router.push(`/dashboard/owner/properties/edit/${id}`);
+    router.push(`/dashboard/owner/properties/${encodeURIComponent(String(id))}/edit`);
   }
 
   /* DELETE PROPERTY */
