@@ -115,14 +115,11 @@ export default function RegisterForm() {
       formData.append("image", file);
 
       
-const response = await fetch(
-  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/upload/profile`,
-  {
-    method: "POST",
-    body: formData,
-    credentials: "include",
-  }
-);
+const response = await fetch("/api/upload/profile", {
+  method: "POST",
+  body: formData,
+  credentials: "include",
+});
 
 
       const data = await response.json();
