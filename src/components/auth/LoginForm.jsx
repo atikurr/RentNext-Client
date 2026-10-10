@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -11,7 +12,6 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Apple,
   Loader2,
   ShieldCheck,
   Zap,
@@ -23,6 +23,7 @@ import { authClient } from "@/lib/auth-client";
 
 export default function LoginForm() {
   const router = useRouter();
+  const socialHandled = useRef(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +32,7 @@ export default function LoginForm() {
   const [socialLoading, setSocialLoading] = useState("");
   const [error, setError] = useState("");
 
-  // GET CALLBACK URL
+  // SAFE CALLBACK URL
   const getCallbackUrl = () => {
     if (typeof window === "undefined") return null;
 
@@ -49,28 +50,93 @@ export default function LoginForm() {
     return null;
   };
 
-  // REDIRECT AFTER LOGIN
+  // REDIRECT BASED ON ROLE
   const redirectAfterLogin = (role) => {
-    const callbackUrl = getCallbackUrl();
+    const callbackUrl =
+      sessionStorage.getItem("loginCallbackUrl") ||
+      getCallbackUrl();
+
+    sessionStorage.removeItem("loginCallbackUrl");
+
     const normalizedRole = role?.toLowerCase();
 
     if (normalizedRole === "admin") {
       router.replace("/dashboard/admin");
+      router.refresh();
       return;
     }
 
     if (normalizedRole === "owner") {
       router.replace("/dashboard/owner");
+      router.refresh();
       return;
     }
 
     if (callbackUrl) {
       router.replace(callbackUrl);
+      router.refresh();
       return;
     }
 
     router.replace("/");
+    router.refresh();
   };
+
+  // COMPLETE SOCIAL LOGIN AFTER OAUTH REDIRECT
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const socialStatus = params.get("social");
+
+    if (socialStatus !== "success" || socialHandled.current) {
+      return;
+    }
+
+    socialHandled.current = true;
+
+    const completeSocialLogin = async () => {
+      try {
+        setError("");
+
+        const sessionResult = await authClient.getSession();
+
+        if (sessionResult.error) {
+          throw new Error(
+            sessionResult.error.message ||
+              "Unable to retrieve your session."
+          );
+        }
+
+        const user = sessionResult.data?.user;
+
+        if (!user) {
+          throw new Error(
+            "Social login completed, but no active session was found."
+          );
+        }
+
+        // Remove the temporary query parameter.
+        window.history.replaceState(
+          window.history.state,
+          "",
+          window.location.pathname
+        );
+
+        redirectAfterLogin(user.role);
+      } catch (err) {
+        console.error("Social callback error:", err);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to complete social login."
+        );
+
+        socialHandled.current = false;
+      }
+    };
+
+    completeSocialLogin();
+  }, []);
 
   // EMAIL + PASSWORD LOGIN
   const handleSubmit = async (e) => {
@@ -85,15 +151,16 @@ export default function LoginForm() {
     try {
       setLoading(true);
 
-      const { data, error } = await authClient.signIn.email({
-        email: email.trim(),
-        password,
-        disableRedirect: true,
-      });
+      const { data, error: signInError } =
+        await authClient.signIn.email({
+          email: email.trim(),
+          password,
+          disableRedirect: true,
+        });
 
-      if (error) {
+      if (signInError) {
         throw new Error(
-          error.message || "Invalid email or password."
+          signInError.message || "Invalid email or password."
         );
       }
 
@@ -103,39 +170,36 @@ export default function LoginForm() {
 
       const sessionResult = await authClient.getSession();
 
-      if (sessionResult?.error) {
+      if (sessionResult.error) {
         throw new Error(
           sessionResult.error.message ||
-            "Unable to get your session."
+            "Unable to retrieve your session."
         );
       }
 
-      const user = sessionResult?.data?.user;
+      const user = sessionResult.data?.user;
 
       if (!user) {
         throw new Error(
-          "Login successful, but user session was not found."
+          "Login successful, but the user session was not found."
         );
       }
 
-      console.log("Logged in user:", user);
-      console.log("Logged in user role:", user.role);
-
       redirectAfterLogin(user.role);
-      router.refresh();
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (err) {
+      console.error("Login error:", err);
 
       setError(
-        error?.message ||
-          "Something went wrong. Please try again."
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // SOCIAL LOGIN — EXISTING FLOW PRESERVED
+  // GOOGLE / FACEBOOK LOGIN
   const handleSocialLogin = async (provider) => {
     try {
       setError("");
@@ -151,33 +215,32 @@ export default function LoginForm() {
 
       const frontendURL = window.location.origin;
 
-      const { data, error } = await authClient.signIn.social({
-        provider,
-        callbackURL: `${frontendURL}/auth/social-callback`,
-        errorCallbackURL: `${frontendURL}/login`,
-        newUserCallbackURL: `${frontendURL}/auth/social-callback`,
-        disableRedirect: true,
-      });
+      const { data, error: socialError } =
+        await authClient.signIn.social({
+          provider,
+          callbackURL: `${frontendURL}/login?social=success`,
+          errorCallbackURL: `${frontendURL}/login?social=error`,
+        });
 
-      if (error) {
+      if (socialError) {
         throw new Error(
-          error.message ||
+          socialError.message ||
             `Unable to continue with ${provider}.`
         );
       }
 
+      // Better Auth normally redirects automatically.
+      // Keep this fallback if a URL is returned.
       if (data?.url) {
         window.location.assign(data.url);
-        return;
       }
-
-      throw new Error("OAuth redirect URL was not generated.");
-    } catch (error) {
-      console.error(`${provider} login error:`, error);
+    } catch (err) {
+      console.error(`${provider} login error:`, err);
 
       setError(
-        error?.message ||
-          `Unable to continue with ${provider}.`
+        err instanceof Error
+          ? err.message
+          : `Unable to continue with ${provider}.`
       );
 
       setSocialLoading("");
@@ -195,12 +258,14 @@ export default function LoginForm() {
         {/* LEFT: LOGIN FORM */}
         <section className="flex items-center justify-center px-5 py-8 sm:px-10 lg:px-12 xl:px-16">
           <div className="w-full max-w-[470px]">
-            {/* LOGO + REGISTER LINK */}
             <div className="mb-10 flex items-center justify-between gap-3">
               <Link href="/" className="inline-flex items-center">
-                <img
+                <Image
                   src="/assets/logo.png"
                   alt="Rent Next"
+                  width={190}
+                  height={48}
+                  priority
                   className="h-12 w-auto max-w-[190px] object-contain object-left"
                 />
               </Link>
@@ -216,7 +281,6 @@ export default function LoginForm() {
               </p>
             </div>
 
-            {/* HEADING */}
             <div className="mb-7">
               <p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ff6b00]">
                 Welcome to Rent Next
@@ -262,7 +326,6 @@ export default function LoginForm() {
               </button>
             </div>
 
-            {/* DIVIDER */}
             <div className="my-6 flex items-center gap-4">
               <div className="h-px flex-1 bg-gray-200" />
               <span className="text-xs font-medium text-gray-400">
@@ -271,7 +334,6 @@ export default function LoginForm() {
               <div className="h-px flex-1 bg-gray-200" />
             </div>
 
-            {/* ERROR */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
@@ -283,7 +345,6 @@ export default function LoginForm() {
               </motion.div>
             )}
 
-            {/* EMAIL + PASSWORD */}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label
@@ -358,7 +419,6 @@ export default function LoginForm() {
                 </div>
               </div>
 
-              {/* FORGOT PASSWORD */}
               <div className="flex justify-end">
                 <Link
                   href="/forgot-password"
@@ -368,7 +428,6 @@ export default function LoginForm() {
                 </Link>
               </div>
 
-              {/* ORANGE PRIMARY BUTTON */}
               <button
                 type="submit"
                 disabled={loading || Boolean(socialLoading)}
@@ -390,7 +449,6 @@ export default function LoginForm() {
               </button>
             </form>
 
-            {/* BENEFITS */}
             <div className="mt-8 grid grid-cols-3 gap-3 border-t border-gray-100 pt-6">
               <Benefit
                 icon={<ShieldCheck size={19} />}
@@ -411,7 +469,6 @@ export default function LoginForm() {
               />
             </div>
 
-            {/* MOBILE REGISTER LINK */}
             <p className="mt-7 text-center text-sm text-gray-500 lg:hidden">
               Don&apos;t have an account?{" "}
               <Link
@@ -424,16 +481,18 @@ export default function LoginForm() {
           </div>
         </section>
 
-        {/* RIGHT: PROPERTY VISUAL */}
+        {/* RIGHT: PROPERTY IMAGE */}
         <section className="relative hidden min-h-[650px] p-4 lg:block">
           <div className="relative h-full min-h-[650px] overflow-hidden rounded-[22px] bg-[#171717]">
-            <img
+            <Image
               src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1600&q=85"
               alt="Modern luxury home at sunset"
-              className="absolute inset-0 h-full w-full object-cover"
+              fill
+              priority
+              sizes="(min-width: 1024px) 52vw, 100vw"
+              className="object-cover"
             />
 
-            {/* IMAGE OVERLAY */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/10 to-black/65" />
 
             <div className="absolute inset-x-0 top-0 p-8 xl:p-11">
@@ -445,8 +504,7 @@ export default function LoginForm() {
               <h2 className="mt-7 max-w-lg text-4xl font-extrabold leading-[1.13] tracking-tight text-white xl:text-5xl">
                 Find Your
                 <br />
-                Perfect{" "}
-                <span className="text-[#ff7a1a]">Home.</span>
+                Perfect <span className="text-[#ff7a1a]">Home.</span>
               </h2>
 
               <p className="mt-4 max-w-sm text-sm leading-6 text-white/80 xl:text-base">
@@ -461,7 +519,6 @@ export default function LoginForm() {
               </div>
             </div>
 
-            {/* BOTTOM GLASS CARD */}
             <div className="absolute bottom-7 left-6 right-6 rounded-2xl border border-white/20 bg-black/35 p-5 text-white shadow-2xl backdrop-blur-xl xl:bottom-9 xl:left-9 xl:right-9">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ff6b00] text-white">
