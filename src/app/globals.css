@@ -167,18 +167,86 @@
    BASE
 ========================================================= */
 
+
+/* =========================================================
+   BASE & RESPONSIVE FIX
+========================================================= */
+
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
     @apply border-border outline-ring/50;
   }
 
   html {
     @apply font-sans;
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground;
-    margin: 0;
+    width: 100%;
+    min-width: 320px;
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow-x: clip;
+  }
+
+  main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  img {
+    height: auto;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    max-width: 100%;
+    font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    touch-action: manipulation;
+  }
+
+  /* Responsive media */
+  iframe {
+    max-width: 100%;
+  }
+}
+
+/* Prevent common mobile overflow */
+@media (max-width: 639px) {
+  body {
+    overflow-wrap: break-word;
+  }
+
+  section {
+    min-width: 0;
   }
 }
