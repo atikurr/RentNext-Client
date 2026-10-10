@@ -1,4 +1,3 @@
-
 const backendUrl =
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
@@ -13,14 +12,37 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "lh4.googleusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "lh5.googleusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "lh6.googleusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "googleusercontent.com",
+        pathname: "/**",
       },
       {
         protocol: "https",
         hostname: "encrypted-tbn0.gstatic.com",
+        pathname: "/**",
       },
       {
         protocol: "https",
         hostname: "images.unsplash.com",
+        pathname: "/**",
       },
       {
         protocol: "https",

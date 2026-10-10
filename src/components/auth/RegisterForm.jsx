@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-
 import {
   User,
   Mail,
@@ -23,10 +22,6 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 
-/* =========================================================
-   SOCIAL BUTTON
-========================================================= */
-
 function SocialButton({
   provider,
   label,
@@ -39,53 +34,34 @@ function SocialButton({
       type="button"
       onClick={() => onClick(provider)}
       disabled={disabled}
-      className="
-        flex h-11 w-full items-center justify-center
-        rounded-xl border border-[#292929]
-        bg-[#0b0b0b]
-        text-white
-        transition-all duration-200
-        hover:border-[#444]
-        hover:bg-[#111]
-        active:scale-[0.98]
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-      "
       aria-label={`Continue with ${label}`}
+      className="flex h-11 w-full items-center justify-center rounded-xl border border-[#292929] bg-[#0b0b0b] text-white transition hover:border-[#444] hover:bg-[#111] disabled:cursor-not-allowed disabled:opacity-50"
     >
       {icon}
     </button>
   );
 }
 
-/* =========================================================
-   REGISTER FORM
-========================================================= */
-
 export default function RegisterForm() {
   const router = useRouter();
   const fileInputRef = useRef(null);
-
-  /* =======================================================
-     STATE
-  ======================================================= */
 
   const [imagePreview, setImagePreview] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [role, setRole] = useState("tenant");
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  /* =======================================================
-     IMAGE UPLOAD
-  ======================================================= */
+  // ==========================================
+  // IMAGE UPLOAD
+  // ==========================================
 
   const handleImageChange = async (event) => {
     const file = event.target.files?.[0];
@@ -93,49 +69,59 @@ export default function RegisterForm() {
     if (!file) return;
 
     setError("");
+    setSuccess("");
 
     if (!file.type.startsWith("image/")) {
       setError("Please select a valid image file.");
+      event.target.value = "";
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       setError("Image size must be less than 5MB.");
+      event.target.value = "";
       return;
     }
 
     const previewUrl = URL.createObjectURL(file);
 
     setImagePreview(previewUrl);
+    setImageUrl("");
     setUploadingImage(true);
 
     try {
       const formData = new FormData();
-
       formData.append("image", file);
 
-      
-const response = await fetch("/api/upload/profile", {
-  method: "POST",
-  body: formData,
-  credentials: "include",
-});
+      const response = await fetch("/api/upload/profile", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
 
-
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Image upload failed."
+          data.message ||
+            `Image upload failed (${response.status}).`
+        );
+      }
+
+      if (
+        typeof data.imageUrl !== "string" ||
+        !data.imageUrl.trim()
+      ) {
+        throw new Error(
+          "Image uploaded, but the server did not return imageUrl."
         );
       }
 
       setImageUrl(data.imageUrl);
     } catch (uploadError) {
-      console.error(
-        "Profile image upload error:",
-        uploadError
-      );
+      console.error("Profile image upload error:", uploadError);
+
+      URL.revokeObjectURL(previewUrl);
 
       setImagePreview("");
       setImageUrl("");
@@ -145,19 +131,24 @@ const response = await fetch("/api/upload/profile", {
       }
 
       setError(
-        uploadError.message ||
-          "Failed to upload profile image."
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Failed to upload profile image."
       );
     } finally {
       setUploadingImage(false);
     }
   };
 
-  /* =======================================================
-     REMOVE IMAGE
-  ======================================================= */
+  // ==========================================
+  // REMOVE IMAGE
+  // ==========================================
 
   const removeImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
     setImagePreview("");
     setImageUrl("");
 
@@ -166,88 +157,62 @@ const response = await fetch("/api/upload/profile", {
     }
   };
 
-  /* =======================================================
-     SOCIAL LOGIN
-  ======================================================= */
+  // ==========================================
+  // SOCIAL LOGIN
+  // ==========================================
 
   const handleSocialLogin = async (provider) => {
     setError("");
     setLoading(true);
 
     try {
-      const { data, error } =
+      const { error: socialError } =
         await authClient.signIn.social({
           provider,
-          callbackURL: "/dashboard/tenant",
-          disableRedirect: true,
+          callbackURL: "/",
         });
 
-      if (error) {
-        console.error(
-          `${provider} login error:`,
-          error
+      if (socialError) {
+        throw new Error(
+          socialError.message || "Social login failed."
         );
-
-        setError(
-          error.message ||
-            `${provider} login failed.`
-        );
-
-        return;
-      }
-
-      if (data?.url) {
-        window.location.assign(data.url);
       }
     } catch (socialError) {
-      console.error(
-        `${provider} login error:`,
-        socialError
-      );
+      console.error("Social login error:", socialError);
 
       setError(
-        socialError.message ||
-          `${provider} login is not configured yet.`
+        socialError instanceof Error
+          ? socialError.message
+          : "Social login is not configured yet."
       );
-    } finally {
+
       setLoading(false);
     }
   };
 
-  /* =======================================================
-     REGISTER
-  ======================================================= */
+  // ==========================================
+  // REGISTER
+  // ==========================================
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
+    setSuccess("");
 
-    const formData = new FormData(
-      event.currentTarget
-    );
+    if (uploadingImage) {
+      setError("Please wait for the image upload to finish.");
+      return;
+    }
 
-    const name = formData
-      .get("name")
-      ?.toString()
-      .trim();
+    const formData = new FormData(event.currentTarget);
 
-    const email = formData
-      .get("email")
-      ?.toString()
-      .trim();
-
-    const password = formData
-      .get("password")
-      ?.toString();
-
+    const name = formData.get("name")?.toString().trim();
+    const email = formData.get("email")?.toString().trim();
+    const password = formData.get("password")?.toString();
     const confirmPassword = formData
       .get("confirmPassword")
       ?.toString();
-
-    /* =====================================================
-       VALIDATION
-    ===================================================== */
 
     if (!name || name.length < 2) {
       setError("Please enter your full name.");
@@ -259,15 +224,8 @@ const response = await fetch("/api/upload/profile", {
       return;
     }
 
-    if (!password) {
-      setError("Please enter your password.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError(
-        "Password must be at least 8 characters."
-      );
+    if (!password || password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
@@ -281,137 +239,73 @@ const response = await fetch("/api/upload/profile", {
       return;
     }
 
-    if (uploadingImage) {
-      setError(
-        "Please wait until your profile image finishes uploading."
-      );
-      return;
-    }
-
     setLoading(true);
 
     try {
-      /* ===================================================
-         BETTER AUTH SIGN UP
-      =================================================== */
-
-      const { data, error } =
+      const { error: registerError } =
         await authClient.signUp.email({
           name,
           email,
           password,
           photo: imageUrl || "",
           role,
-          callbackURL:
-            role === "owner"
-              ? "/dashboard/owner"
-              : "/dashboard/tenant",
+          callbackURL: "/login",
         });
 
-      if (error) {
-        console.error(
-          "Better Auth registration error:",
-          error
-        );
-
-        setError(
-          error.message ||
+      if (registerError) {
+        throw new Error(
+          registerError.message ||
             "Unable to create your account."
         );
-
-        return;
       }
 
-      console.log(
-        "Registration successful:",
-        data
+      setSuccess(
+        "Account created successfully. Please log in."
       );
 
-      /* ===================================================
-         ROLE BASED NAVIGATION
-      =================================================== */
-
-      if (role === "owner") {
-        router.push("/dashboard/owner");
-      } else {
-        router.push("/dashboard/tenant");
-      }
+      // IMPORTANT:
+      // Do not send newly registered users directly
+      // to a dashboard.
+      router.replace("/login");
     } catch (registerError) {
-      console.error(
-        "Registration error:",
-        registerError
-      );
+      console.error("Registration error:", registerError);
 
       setError(
-        registerError.message ||
-          "Something went wrong. Please try again."
+        registerError instanceof Error
+          ? registerError.message
+          : "Something went wrong. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  /* =======================================================
-     RENDER
-  ======================================================= */
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
-    <main className="min-h-screen bg-[#0b0b0b] px-4 py-10 sm:px-6">
+    <main className="min-h-screen bg-[#0b0b0b] px-4 py-10 text-white sm:px-6">
       <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center">
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 15,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.4,
-          }}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
           className="w-full max-w-[560px]"
         >
-          {/* =================================================
-              CARD
-          ================================================= */}
-
-          <div
-            className="
-              rounded-2xl
-              border border-[#292929]
-              bg-[#151515]
-              px-6 py-7
-              shadow-2xl shadow-black/40
-              sm:px-8 sm:py-8
-            "
-          >
-            {/* =================================================
-                LOGO
-            ================================================= */}
+          <div className="rounded-2xl border border-[#292929] bg-[#151515] px-6 py-7 shadow-2xl shadow-black/40 sm:px-8 sm:py-8">
+            {/* LOGO */}
 
             <div className="flex justify-center">
-              <div
-                className="
-                  flex h-14 w-14
-                  items-center justify-center
-                  rounded-2xl
-                  bg-white
-                  text-xl font-bold
-                  tracking-tight
-                  text-black
-                "
-              >
-                PR
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-xl font-bold tracking-tight text-black">
+                RN
               </div>
             </div>
 
-            {/* =================================================
-                HEADER
-            ================================================= */}
+            {/* HEADER */}
 
             <div className="mt-5 text-center">
-              <h1 className="text-2xl font-bold tracking-tight text-white">
+              <h1 className="text-2xl font-bold tracking-tight">
                 Create Your Account
               </h1>
 
@@ -420,54 +314,37 @@ const response = await fetch("/api/upload/profile", {
               </p>
             </div>
 
-            {/* =================================================
-                ERROR
-            ================================================= */}
+            {/* ERROR */}
 
             {error && (
-              <motion.div
-                initial={{
-                  opacity: 0,
-                  y: -5,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                className="
-                  mt-5
-                  rounded-xl
-                  border border-red-900/50
-                  bg-red-950/30
-                  px-4 py-3
-                  text-sm
-                  text-red-400
-                "
+              <div
+                role="alert"
+                className="mt-5 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400"
               >
                 {error}
-              </motion.div>
+              </div>
             )}
 
-            {/* =================================================
-                PROFILE IMAGE
-            ================================================= */}
+            {/* SUCCESS */}
+
+            {success && (
+              <div
+                role="status"
+                className="mt-5 rounded-xl border border-green-900/50 bg-green-950/30 px-4 py-3 text-sm text-green-400"
+              >
+                {success}
+              </div>
+            )}
+
+            {/* PROFILE IMAGE */}
 
             <div className="mt-6 flex flex-col items-center">
               <div className="relative">
-                <div
-                  className="
-                    flex h-20 w-20
-                    items-center justify-center
-                    overflow-hidden
-                    rounded-full
-                    border border-[#292929]
-                    bg-[#0b0b0b]
-                  "
-                >
+                <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#292929] bg-[#0b0b0b]">
                   {imagePreview ? (
                     <Image
                       src={imagePreview}
-                      alt="Profile image preview"
+                      alt="Profile preview"
                       width={80}
                       height={80}
                       unoptimized
@@ -482,52 +359,24 @@ const response = await fetch("/api/upload/profile", {
                   )}
                 </div>
 
-                {/* REMOVE */}
-
                 {imagePreview && (
                   <button
                     type="button"
                     onClick={removeImage}
-                    disabled={loading}
+                    disabled={loading || uploadingImage}
                     aria-label="Remove profile image"
-                    className="
-                      absolute -right-1 -top-1
-                      flex h-6 w-6
-                      items-center justify-center
-                      rounded-full
-                      bg-red-500
-                      text-white
-                      transition
-                      hover:bg-red-600
-                    "
+                    className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
                   >
                     <X size={13} />
                   </button>
                 )}
 
-                {/* CAMERA */}
-
                 <button
                   type="button"
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
-                  disabled={
-                    uploadingImage || loading
-                  }
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading || uploadingImage}
                   aria-label="Upload profile image"
-                  className="
-                    absolute bottom-0 right-0
-                    flex h-7 w-7
-                    items-center justify-center
-                    rounded-full
-                    bg-white
-                    text-black
-                    shadow-lg
-                    transition
-                    hover:bg-slate-200
-                    disabled:opacity-50
-                  "
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-white text-black shadow-lg hover:bg-slate-200 disabled:opacity-50"
                 >
                   {uploadingImage ? (
                     <Loader2
@@ -551,11 +400,15 @@ const response = await fetch("/api/upload/profile", {
               <p className="mt-2 text-[11px] text-[#666]">
                 Profile photo is optional · Max 5MB
               </p>
+
+              {uploadingImage && (
+                <p className="mt-1 text-xs text-orange-400">
+                  Uploading image...
+                </p>
+              )}
             </div>
 
-            {/* =================================================
-                ACCOUNT TYPE
-            ================================================= */}
+            {/* ACCOUNT TYPE */}
 
             <div className="mt-6">
               <label className="mb-2 block text-xs font-medium text-[#999]">
@@ -563,110 +416,52 @@ const response = await fetch("/api/upload/profile", {
               </label>
 
               <div className="grid grid-cols-2 gap-2">
-                {/* TENANT */}
-
                 <button
                   type="button"
-                  onClick={() =>
-                    setRole("tenant")
-                  }
+                  onClick={() => setRole("tenant")}
                   disabled={loading}
-                  aria-pressed={
+                  aria-pressed={role === "tenant"}
+                  className={`rounded-xl border px-3 py-3 text-left transition ${
                     role === "tenant"
-                  }
-                  className={`
-                    rounded-xl
-                    border
-                    px-3 py-3
-                    text-left
-                    transition-all
-                    ${
-                      role === "tenant"
-                        ? "border-white bg-white text-black"
-                        : "border-[#292929] bg-[#0b0b0b] text-[#aaa] hover:border-[#444]"
-                    }
-                  `}
+                      ? "border-white bg-white text-black"
+                      : "border-[#292929] bg-[#0b0b0b] text-[#aaa] hover:border-[#444]"
+                  }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Home
-                      size={18}
-                      className={
-                        role === "tenant"
-                          ? "text-black"
-                          : "text-[#777]"
-                      }
-                    />
+                    <Home size={18} />
 
                     <div>
                       <p className="text-sm font-semibold">
                         Tenant
                       </p>
 
-                      <p
-                        className={`
-                          mt-0.5 text-[10px]
-                          ${
-                            role === "tenant"
-                              ? "text-black/60"
-                              : "text-[#666]"
-                          }
-                        `}
-                      >
+                      <p className="mt-0.5 text-[10px] opacity-60">
                         Find & book
                       </p>
                     </div>
                   </div>
                 </button>
 
-                {/* OWNER */}
-
                 <button
                   type="button"
-                  onClick={() =>
-                    setRole("owner")
-                  }
+                  onClick={() => setRole("owner")}
                   disabled={loading}
-                  aria-pressed={
+                  aria-pressed={role === "owner"}
+                  className={`rounded-xl border px-3 py-3 text-left transition ${
                     role === "owner"
-                  }
-                  className={`
-                    rounded-xl
-                    border
-                    px-3 py-3
-                    text-left
-                    transition-all
-                    ${
-                      role === "owner"
-                        ? "border-white bg-white text-black"
-                        : "border-[#292929] bg-[#0b0b0b] text-[#aaa] hover:border-[#444]"
-                    }
-                  `}
+                      ? "border-white bg-white text-black"
+                      : "border-[#292929] bg-[#0b0b0b] text-[#aaa] hover:border-[#444]"
+                  }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Building2
-                      size={18}
-                      className={
-                        role === "owner"
-                          ? "text-black"
-                          : "text-[#777]"
-                      }
-                    />
+                    <Building2 size={18} />
 
                     <div>
                       <p className="text-sm font-semibold">
                         Owner
                       </p>
 
-                      <p
-                        className={`
-                          mt-0.5 text-[10px]
-                          ${
-                            role === "owner"
-                              ? "text-black/60"
-                              : "text-[#666]"
-                          }
-                        `}
-                      >
+                      <p className="mt-0.5 text-[10px] opacity-60">
                         List & manage
                       </p>
                     </div>
@@ -675,13 +470,9 @@ const response = await fetch("/api/upload/profile", {
               </div>
             </div>
 
-            {/* =================================================
-                SOCIAL LOGIN
-            ================================================= */}
+            {/* SOCIAL LOGIN */}
 
             <div className="mt-5 grid grid-cols-3 gap-2.5">
-              {/* GOOGLE */}
-
               <SocialButton
                 provider="google"
                 label="Google"
@@ -698,17 +489,14 @@ const response = await fetch("/api/upload/profile", {
                       fill="#4285F4"
                       d="M21.35 12.23c0-.79-.07-1.55-.2-2.27H12v4.3h5.23a4.48 4.48 0 0 1-1.94 2.94v2.44h3.14c1.84-1.7 2.92-4.2 2.92-7.41z"
                     />
-
                     <path
                       fill="#34A853"
                       d="M12 21.6c2.63 0 4.84-.87 6.45-2.36l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.52A9.74 9.74 0 0 0 12 21.6z"
                     />
-
                     <path
                       fill="#FBBC05"
                       d="M6.54 13.69A5.86 5.86 0 0 1 6.23 12c0-.59.1-1.16.31-1.69V7.79H3.3A9.73 9.73 0 0 0 2.27 12c0 1.57.38 3.05 1.03 4.21l3.24-2.52z"
                     />
-
                     <path
                       fill="#EA4335"
                       d="M12 6.28c1.43 0 2.72.49 3.73 1.45l2.8-2.8C16.83 3.38 14.63 2.4 12 2.4a9.74 9.74 0 0 0-8.7 5.39l3.24 2.52c.77-2.31 2.92-4.03 5.46-4.03z"
@@ -717,23 +505,13 @@ const response = await fetch("/api/upload/profile", {
                 }
               />
 
-              {/* APPLE */}
-
               <SocialButton
                 provider="apple"
                 label="Apple"
                 disabled={loading}
                 onClick={handleSocialLogin}
-                icon={
-                  <Apple
-                    size={19}
-                    strokeWidth={2}
-                    className="text-white"
-                  />
-                }
+                icon={<Apple size={19} />}
               />
-
-              {/* FACEBOOK */}
 
               <SocialButton
                 provider="facebook"
@@ -756,9 +534,7 @@ const response = await fetch("/api/upload/profile", {
               />
             </div>
 
-            {/* =================================================
-                DIVIDER
-            ================================================= */}
+            {/* DIVIDER */}
 
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-[#292929]" />
@@ -770,16 +546,9 @@ const response = await fetch("/api/upload/profile", {
               <div className="h-px flex-1 bg-[#292929]" />
             </div>
 
-            {/* =================================================
-                FORM
-            ================================================= */}
+            {/* FORM */}
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4"
-            >
-              {/* FULL NAME */}
-
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label
                   htmlFor="name"
@@ -791,13 +560,7 @@ const response = await fetch("/api/upload/profile", {
                 <div className="relative">
                   <User
                     size={17}
-                    strokeWidth={1.7}
-                    className="
-                      absolute left-3.5
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#666]
-                    "
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
                   />
 
                   <input
@@ -806,29 +569,13 @@ const response = await fetch("/api/upload/profile", {
                     type="text"
                     placeholder="Enter your full name"
                     autoComplete="name"
+                    minLength={2}
                     required
                     disabled={loading}
-                    className="
-                      h-11 w-full
-                      rounded-xl
-                      border border-[#292929]
-                      bg-[#0b0b0b]
-                      pl-10 pr-4
-                      text-sm text-white
-                      outline-none
-                      placeholder:text-[#555]
-                      transition
-                      focus:border-[#555]
-                      focus:ring-1
-                      focus:ring-white/10
-                      disabled:cursor-not-allowed
-                      disabled:opacity-60
-                    "
+                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-4 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
                   />
                 </div>
               </div>
-
-              {/* EMAIL */}
 
               <div>
                 <label
@@ -841,13 +588,7 @@ const response = await fetch("/api/upload/profile", {
                 <div className="relative">
                   <Mail
                     size={17}
-                    strokeWidth={1.7}
-                    className="
-                      absolute left-3.5
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#666]
-                    "
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
                   />
 
                   <input
@@ -858,27 +599,10 @@ const response = await fetch("/api/upload/profile", {
                     autoComplete="email"
                     required
                     disabled={loading}
-                    className="
-                      h-11 w-full
-                      rounded-xl
-                      border border-[#292929]
-                      bg-[#0b0b0b]
-                      pl-10 pr-4
-                      text-sm text-white
-                      outline-none
-                      placeholder:text-[#555]
-                      transition
-                      focus:border-[#555]
-                      focus:ring-1
-                      focus:ring-white/10
-                      disabled:cursor-not-allowed
-                      disabled:opacity-60
-                    "
+                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-4 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
                   />
                 </div>
               </div>
-
-              {/* PASSWORD */}
 
               <div>
                 <label
@@ -891,66 +615,30 @@ const response = await fetch("/api/upload/profile", {
                 <div className="relative">
                   <LockKeyhole
                     size={17}
-                    strokeWidth={1.7}
-                    className="
-                      absolute left-3.5
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#666]
-                    "
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
                   />
 
                   <input
                     id="password"
                     name="password"
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type={showPassword ? "text" : "password"}
                     placeholder="Minimum 8 characters"
                     autoComplete="new-password"
-                    required
                     minLength={8}
+                    required
                     disabled={loading}
-                    className="
-                      h-11 w-full
-                      rounded-xl
-                      border border-[#292929]
-                      bg-[#0b0b0b]
-                      pl-10 pr-11
-                      text-sm text-white
-                      outline-none
-                      placeholder:text-[#555]
-                      transition
-                      focus:border-[#555]
-                      focus:ring-1
-                      focus:ring-white/10
-                      disabled:cursor-not-allowed
-                      disabled:opacity-60
-                    "
+                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-11 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
                   />
 
                   <button
                     type="button"
                     onClick={() =>
-                      setShowPassword(
-                        (previous) => !previous
-                      )
+                      setShowPassword((previous) => !previous)
                     }
                     aria-label={
-                      showPassword
-                        ? "Hide password"
-                        : "Show password"
+                      showPassword ? "Hide password" : "Show password"
                     }
-                    className="
-                      absolute right-3.5
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#666]
-                      transition
-                      hover:text-white
-                    "
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#666] hover:text-white"
                   >
                     {showPassword ? (
                       <EyeOff size={17} />
@@ -960,8 +648,6 @@ const response = await fetch("/api/upload/profile", {
                   </button>
                 </div>
               </div>
-
-              {/* CONFIRM PASSWORD */}
 
               <div>
                 <label
@@ -974,44 +660,21 @@ const response = await fetch("/api/upload/profile", {
                 <div className="relative">
                   <LockKeyhole
                     size={17}
-                    strokeWidth={1.7}
-                    className="
-                      absolute left-3.5
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#666]
-                    "
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
                   />
 
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
                     type={
-                      showConfirmPassword
-                        ? "text"
-                        : "password"
+                      showConfirmPassword ? "text" : "password"
                     }
                     placeholder="Re-enter your password"
                     autoComplete="new-password"
-                    required
                     minLength={8}
+                    required
                     disabled={loading}
-                    className="
-                      h-11 w-full
-                      rounded-xl
-                      border border-[#292929]
-                      bg-[#0b0b0b]
-                      pl-10 pr-11
-                      text-sm text-white
-                      outline-none
-                      placeholder:text-[#555]
-                      transition
-                      focus:border-[#555]
-                      focus:ring-1
-                      focus:ring-white/10
-                      disabled:cursor-not-allowed
-                      disabled:opacity-60
-                    "
+                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-11 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
                   />
 
                   <button
@@ -1026,14 +689,7 @@ const response = await fetch("/api/upload/profile", {
                         ? "Hide confirm password"
                         : "Show confirm password"
                     }
-                    className="
-                      absolute right-3.5
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#666]
-                      transition
-                      hover:text-white
-                    "
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#666] hover:text-white"
                   >
                     {showConfirmPassword ? (
                       <EyeOff size={17} />
@@ -1044,70 +700,28 @@ const response = await fetch("/api/upload/profile", {
                 </div>
               </div>
 
-              {/* =================================================
-                  SELECTED ACCOUNT TYPE
-              ================================================= */}
+              {/* SELECTED ROLE */}
 
-              <div
-                className="
-                  flex items-center
-                  justify-between
-                  rounded-xl
-                  border border-[#292929]
-                  bg-[#0b0b0b]
-                  px-3.5 py-2.5
-                "
-              >
+              <div className="flex items-center justify-between rounded-xl border border-[#292929] bg-[#0b0b0b] px-3.5 py-2.5">
                 <span className="text-xs text-[#666]">
                   Selected account type
                 </span>
 
-                <span
-                  className="
-                    rounded-full
-                    bg-white
-                    px-3 py-1
-                    text-[10px]
-                    font-bold
-                    capitalize
-                    text-black
-                  "
-                >
+                <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold capitalize text-black">
                   {role}
                 </span>
               </div>
 
-              {/* =================================================
-                  CREATE ACCOUNT
-              ================================================= */}
+              {/* SUBMIT */}
 
               <button
                 type="submit"
-                disabled={
-                  loading || uploadingImage
-                }
-                className="
-                  flex h-12 w-full
-                  items-center justify-center
-                  gap-2
-                  rounded-xl
-                  bg-white
-                  px-5
-                  text-sm font-bold
-                  text-black
-                  transition-all
-                  hover:bg-slate-200
-                  active:scale-[0.99]
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-                "
+                disabled={loading || uploadingImage}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? (
                   <>
-                    <Loader2
-                      size={18}
-                      className="animate-spin"
-                    />
+                    <Loader2 size={18} className="animate-spin" />
                     Creating Account...
                   </>
                 ) : (
@@ -1119,41 +733,25 @@ const response = await fetch("/api/upload/profile", {
               </button>
             </form>
 
-            {/* =================================================
-                LOGIN LINK
-            ================================================= */}
+            {/* LOGIN LINK */}
 
             <div className="mt-6 text-center">
               <p className="text-sm text-[#777]">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="
-                    font-medium
-                    text-white
-                    transition
-                    hover:text-[#ccc]
-                  "
+                  className="font-medium text-white hover:text-[#ccc]"
                 >
                   Login
                 </Link>
               </p>
             </div>
 
-            {/* =================================================
-                TERMS
-            ================================================= */}
-
             <p className="mt-5 text-center text-[10px] leading-5 text-[#555]">
               By creating an account, you agree to our{" "}
-              <span className="text-[#777]">
-                Terms of Service
-              </span>{" "}
+              <span className="text-[#777]">Terms of Service</span>{" "}
               and{" "}
-              <span className="text-[#777]">
-                Privacy Policy
-              </span>
-              .
+              <span className="text-[#777]">Privacy Policy</span>.
             </p>
           </div>
         </motion.div>
