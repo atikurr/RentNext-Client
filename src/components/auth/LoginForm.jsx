@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -12,6 +13,10 @@ import {
   ArrowRight,
   Apple,
   Loader2,
+  ShieldCheck,
+  Zap,
+  MonitorSmartphone,
+  Check,
 } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
@@ -26,14 +31,9 @@ export default function LoginForm() {
   const [socialLoading, setSocialLoading] = useState("");
   const [error, setError] = useState("");
 
-  // =====================================================
   // GET CALLBACK URL
-  // =====================================================
-
   const getCallbackUrl = () => {
-    if (typeof window === "undefined") {
-      return null;
-    }
+    if (typeof window === "undefined") return null;
 
     const params = new URLSearchParams(window.location.search);
     const callbackUrl = params.get("callbackUrl");
@@ -49,43 +49,32 @@ export default function LoginForm() {
     return null;
   };
 
-  // =====================================================
   // REDIRECT AFTER LOGIN
-  // =====================================================
-
   const redirectAfterLogin = (role) => {
     const callbackUrl = getCallbackUrl();
     const normalizedRole = role?.toLowerCase();
 
-    // ADMIN → ADMIN DASHBOARD
     if (normalizedRole === "admin") {
       router.replace("/dashboard/admin");
       return;
     }
 
-    // OWNER → OWNER DASHBOARD
     if (normalizedRole === "owner") {
       router.replace("/dashboard/owner");
       return;
     }
 
-    // OTHER USERS → CALLBACK URL
     if (callbackUrl) {
       router.replace(callbackUrl);
       return;
     }
 
-    // DEFAULT → HOME
     router.replace("/");
   };
 
-  // =====================================================
   // EMAIL + PASSWORD LOGIN
-  // =====================================================
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError("");
 
     if (!email.trim() || !password) {
@@ -112,7 +101,6 @@ export default function LoginForm() {
         throw new Error("Login failed. Please try again.");
       }
 
-      // GET CURRENT SESSION
       const sessionResult = await authClient.getSession();
 
       if (sessionResult?.error) {
@@ -133,9 +121,7 @@ export default function LoginForm() {
       console.log("Logged in user:", user);
       console.log("Logged in user role:", user.role);
 
-      // ROLE-BASED REDIRECT
       redirectAfterLogin(user.role);
-
       router.refresh();
     } catch (error) {
       console.error("Login error:", error);
@@ -149,30 +135,22 @@ export default function LoginForm() {
     }
   };
 
-  // =====================================================
-  // SOCIAL LOGIN
-  // =====================================================
-
+  // SOCIAL LOGIN — EXISTING FLOW PRESERVED
   const handleSocialLogin = async (provider) => {
     try {
       setError("");
       setSocialLoading(provider);
 
-      // PRESERVE CALLBACK URL
       const callbackUrl = getCallbackUrl();
 
       if (callbackUrl) {
-        sessionStorage.setItem(
-          "loginCallbackUrl",
-          callbackUrl
-        );
+        sessionStorage.setItem("loginCallbackUrl", callbackUrl);
       } else {
         sessionStorage.removeItem("loginCallbackUrl");
       }
 
       const frontendURL = window.location.origin;
 
-      // SOCIAL AUTH
       const { data, error } = await authClient.signIn.social({
         provider,
         callbackURL: `${frontendURL}/auth/social-callback`,
@@ -188,7 +166,6 @@ export default function LoginForm() {
         );
       }
 
-      // REDIRECT TO OAUTH PROVIDER
       if (data?.url) {
         window.location.assign(data.url);
         return;
@@ -207,248 +184,340 @@ export default function LoginForm() {
     }
   };
 
-  // =====================================================
-  // UI
-  // =====================================================
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 25 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="w-full max-w-md"
-    >
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#151515] shadow-2xl">
-        {/* HEADER */}
+    <main className="min-h-screen bg-[#f3f0ed] p-3 sm:p-5 lg:p-7">
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mx-auto grid min-h-[calc(100vh-56px)] max-w-[1450px] overflow-hidden rounded-[26px] bg-white shadow-[0_20px_80px_rgba(20,20,20,0.08)] lg:grid-cols-[0.95fr_1.05fr]"
+      >
+        {/* LEFT: LOGIN FORM */}
+        <section className="flex items-center justify-center px-5 py-8 sm:px-10 lg:px-12 xl:px-16">
+          <div className="w-full max-w-[470px]">
+            {/* LOGO + REGISTER LINK */}
+            <div className="mb-10 flex items-center justify-between gap-3">
+              <Link href="/" className="inline-flex items-center">
+                <img
+                  src="/assets/logo.png"
+                  alt="Rent Next"
+                  className="h-12 w-auto max-w-[190px] object-contain object-left"
+                />
+              </Link>
 
-        <div className="px-7 pb-6 pt-8 text-center">
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-black shadow-lg">
-            <span className="text-xl font-bold">PR</span>
-          </div>
-
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
-            Welcome Back
-          </h1>
-
-          <p className="mt-2 text-sm text-zinc-500">
-            Sign in to continue to Property Rental
-          </p>
-        </div>
-
-        {/* LOGIN FORM */}
-
-        <form onSubmit={handleSubmit} className="space-y-4 px-7">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          {/* EMAIL */}
-
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-2 block text-sm font-medium text-zinc-300"
-            >
-              Email
-            </label>
-
-            <div className="relative">
-              <Mail
-                size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
-              />
-
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-                disabled={loading || Boolean(socialLoading)}
-                required
-                className="h-12 w-full rounded-xl border border-white/10 bg-[#0d0d0d] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30 disabled:cursor-not-allowed disabled:opacity-60"
-              />
+              <p className="text-xs text-gray-500 sm:text-sm">
+                New here?{" "}
+                <Link
+                  href="/register"
+                  className="font-semibold text-[#ff6b00] transition hover:text-[#e85d00]"
+                >
+                  Sign Up
+                </Link>
+              </p>
             </div>
-          </div>
 
-          {/* PASSWORD */}
+            {/* HEADING */}
+            <div className="mb-7">
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ff6b00]">
+                Welcome to Rent Next
+              </p>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-sm font-medium text-zinc-300"
-            >
-              Password
-            </label>
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#171717] sm:text-4xl">
+                Welcome <span className="text-[#ff6b00]">Back</span>
+              </h1>
 
-            <div className="relative">
-              <LockKeyhole
-                size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
-              />
+              <p className="mt-2 text-sm leading-6 text-gray-500 sm:text-base">
+                Sign in to continue to your account.
+              </p>
+            </div>
 
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                disabled={loading || Boolean(socialLoading)}
-                required
-                className="h-12 w-full rounded-xl border border-white/10 bg-[#0d0d0d] pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30 disabled:cursor-not-allowed disabled:opacity-60"
-              />
+            {/* SOCIAL LOGIN */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => handleSocialLogin("google")}
+                disabled={Boolean(socialLoading) || loading}
+                className="flex h-12 items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 transition hover:border-[#ff6b00]/50 hover:bg-orange-50/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {socialLoading === "google" ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                Continue with Google
+              </button>
 
               <button
                 type="button"
-                onClick={() =>
-                  setShowPassword((previous) => !previous)
-                }
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 transition hover:text-white"
-                aria-label={
-                  showPassword ? "Hide password" : "Show password"
-                }
+                onClick={() => handleSocialLogin("facebook")}
+                disabled={Boolean(socialLoading) || loading}
+                className="flex h-12 items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 transition hover:border-[#ff6b00]/50 hover:bg-orange-50/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {showPassword ? (
-                  <EyeOff size={18} />
+                {socialLoading === "facebook" ? (
+                  <Loader2 size={18} className="animate-spin" />
                 ) : (
-                  <Eye size={18} />
+                  <FacebookIcon />
                 )}
+                Continue with Facebook
               </button>
             </div>
-          </div>
 
-          {/* FORGOT PASSWORD */}
+            {/* DIVIDER */}
+            <div className="my-6 flex items-center gap-4">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-medium text-gray-400">
+                OR CONTINUE WITH EMAIL
+              </span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
 
-          <div className="flex justify-end">
-            <Link
-              href="/forgot-password"
-              className="text-xs text-zinc-500 transition hover:text-white"
-            >
-              Forgot password?
-            </Link>
-          </div>
-
-          {/* LOGIN BUTTON */}
-
-          <button
-            type="submit"
-            disabled={loading || Boolean(socialLoading)}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowRight size={17} />
-              </>
+            {/* ERROR */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                role="alert"
+                className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+              >
+                {error}
+              </motion.div>
             )}
-          </button>
-        </form>
 
-        {/* DIVIDER */}
+            {/* EMAIL + PASSWORD */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="email"
+                  className="mb-2 block text-sm font-semibold text-[#252525]"
+                >
+                  Email Address
+                </label>
 
-        <div className="flex items-center gap-4 px-7 py-6">
-          <div className="h-px flex-1 bg-white/10" />
+                <div className="group relative">
+                  <Mail
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-[#ff6b00]"
+                  />
 
-          <span className="text-xs text-zinc-600">
-            OR CONTINUE WITH
-          </span>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    disabled={loading || Boolean(socialLoading)}
+                    required
+                    className="h-[52px] w-full rounded-xl border border-gray-200 bg-[#f7f7f7] pl-11 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#ff6b00] focus:bg-white focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+                </div>
+              </div>
 
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
+              <div>
+                <label
+                  htmlFor="password"
+                  className="mb-2 block text-sm font-semibold text-[#252525]"
+                >
+                  Password
+                </label>
 
-        {/* SOCIAL LOGIN */}
+                <div className="group relative">
+                  <LockKeyhole
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-[#ff6b00]"
+                  />
 
-        <div className="grid grid-cols-3 gap-3 px-7">
-          {/* GOOGLE */}
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                    disabled={loading || Boolean(socialLoading)}
+                    required
+                    className="h-[52px] w-full rounded-xl border border-gray-200 bg-[#f7f7f7] pl-11 pr-12 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#ff6b00] focus:bg-white focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
 
-          <button
-            type="button"
-            onClick={() => handleSocialLogin("google")}
-            disabled={Boolean(socialLoading) || loading}
-            className="flex h-11 items-center justify-center rounded-xl border border-white/10 bg-[#0d0d0d] transition hover:border-white/20 hover:bg-[#1b1b1b] disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Continue with Google"
-          >
-            {socialLoading === "google" ? (
-              <Loader2
-                size={18}
-                className="animate-spin text-white"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPassword((previous) => !previous)
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-[#ff6b00]"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOff size={19} />
+                    ) : (
+                      <Eye size={19} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* FORGOT PASSWORD */}
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-semibold text-[#ff6b00] transition hover:text-[#e85d00]"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+
+              {/* ORANGE PRIMARY BUTTON */}
+              <button
+                type="submit"
+                disabled={loading || Boolean(socialLoading)}
+                className="group flex h-[52px] w-full items-center justify-center gap-3 rounded-xl bg-[#ff6b00] px-5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition duration-300 hover:-translate-y-0.5 hover:bg-[#e85d00] hover:shadow-xl hover:shadow-orange-500/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={19} className="animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 transition group-hover:bg-white/30">
+                      <ArrowRight size={18} />
+                    </span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* BENEFITS */}
+            <div className="mt-8 grid grid-cols-3 gap-3 border-t border-gray-100 pt-6">
+              <Benefit
+                icon={<ShieldCheck size={19} />}
+                title="Secure Login"
+                subtitle="Your data is safe"
               />
-            ) : (
-              <GoogleIcon />
-            )}
-          </button>
 
-          {/* APPLE */}
-
-          <button
-            type="button"
-            onClick={() => handleSocialLogin("apple")}
-            disabled={Boolean(socialLoading) || loading}
-            className="flex h-11 items-center justify-center rounded-xl border border-white/10 bg-[#0d0d0d] text-white transition hover:border-white/20 hover:bg-[#1b1b1b] disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Continue with Apple"
-          >
-            {socialLoading === "apple" ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Apple size={20} />
-            )}
-          </button>
-
-          {/* FACEBOOK */}
-
-          <button
-            type="button"
-            onClick={() => handleSocialLogin("facebook")}
-            disabled={Boolean(socialLoading) || loading}
-            className="flex h-11 items-center justify-center rounded-xl border border-white/10 bg-[#0d0d0d] transition hover:border-white/20 hover:bg-[#1b1b1b] disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Continue with Facebook"
-          >
-            {socialLoading === "facebook" ? (
-              <Loader2
-                size={18}
-                className="animate-spin text-white"
+              <Benefit
+                icon={<Zap size={19} />}
+                title="Fast & Easy"
+                subtitle="Quick access"
               />
-            ) : (
-              <FacebookIcon />
-            )}
-          </button>
-        </div>
 
-        {/* REGISTER */}
+              <Benefit
+                icon={<MonitorSmartphone size={19} />}
+                title="Any Device"
+                subtitle="Login anywhere"
+              />
+            </div>
 
-        <div className="px-7 pb-8 pt-6 text-center">
-          <p className="text-sm text-zinc-500">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/register"
-              className="font-medium text-white transition hover:text-zinc-300"
-            >
-              Create account
-            </Link>
-          </p>
-        </div>
-      </div>
-    </motion.div>
+            {/* MOBILE REGISTER LINK */}
+            <p className="mt-7 text-center text-sm text-gray-500 lg:hidden">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/register"
+                className="font-semibold text-[#ff6b00]"
+              >
+                Create account
+              </Link>
+            </p>
+          </div>
+        </section>
+
+        {/* RIGHT: PROPERTY VISUAL */}
+        <section className="relative hidden min-h-[650px] p-4 lg:block">
+          <div className="relative h-full min-h-[650px] overflow-hidden rounded-[22px] bg-[#171717]">
+            <img
+              src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1600&q=85"
+              alt="Modern luxury home at sunset"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+
+            {/* IMAGE OVERLAY */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/10 to-black/65" />
+
+            <div className="absolute inset-x-0 top-0 p-8 xl:p-11">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-white backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-[#ff6b00]" />
+                Premium Properties
+              </div>
+
+              <h2 className="mt-7 max-w-lg text-4xl font-extrabold leading-[1.13] tracking-tight text-white xl:text-5xl">
+                Find Your
+                <br />
+                Perfect{" "}
+                <span className="text-[#ff7a1a]">Home.</span>
+              </h2>
+
+              <p className="mt-4 max-w-sm text-sm leading-6 text-white/80 xl:text-base">
+                Discover properties that match your lifestyle.
+                Buy, sell, or rent with confidence.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <Feature text="Verified Property Listings" />
+                <Feature text="Trusted Property Owners" />
+                <Feature text="A Better Way to Find Home" />
+              </div>
+            </div>
+
+            {/* BOTTOM GLASS CARD */}
+            <div className="absolute bottom-7 left-6 right-6 rounded-2xl border border-white/20 bg-black/35 p-5 text-white shadow-2xl backdrop-blur-xl xl:bottom-9 xl:left-9 xl:right-9">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ff6b00] text-white">
+                  <ShieldCheck size={21} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-bold">
+                    Find Your Next Home
+                  </p>
+                  <p className="mt-1 text-xs text-white/70">
+                    Your next chapter starts here.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </motion.div>
+    </main>
   );
 }
 
-// =====================================================
-// GOOGLE ICON
-// =====================================================
+// BENEFIT ITEM
+function Benefit({ icon, title, subtitle }) {
+  return (
+    <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:gap-2 sm:text-left">
+      <div className="mb-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[#ff6b00] sm:mb-0">
+        {icon}
+      </div>
 
+      <div>
+        <p className="text-[11px] font-bold text-gray-800 sm:text-xs">
+          {title}
+        </p>
+        <p className="mt-1 text-[10px] leading-4 text-gray-400 sm:text-[11px]">
+          {subtitle}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// FEATURE ITEM
+function Feature({ text }) {
+  return (
+    <div className="flex items-center gap-3 text-sm text-white/90">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ff6b00] text-white">
+        <Check size={13} strokeWidth={3} />
+      </span>
+      {text}
+    </div>
+  );
+}
+
+// GOOGLE ICON
 function GoogleIcon() {
   return (
     <svg
@@ -479,10 +548,7 @@ function GoogleIcon() {
   );
 }
 
-// =====================================================
 // FACEBOOK ICON
-// =====================================================
-
 function FacebookIcon() {
   return (
     <svg
