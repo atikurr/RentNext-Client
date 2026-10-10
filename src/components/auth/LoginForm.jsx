@@ -32,6 +32,16 @@ export default function LoginForm() {
   const [socialLoading, setSocialLoading] = useState("");
   const [error, setError] = useState("");
 
+  // Prevent login form flash after social login.
+  const [checkingSocialLogin, setCheckingSocialLogin] = useState(() => {
+    if (typeof window === "undefined") return false;
+
+    return (
+      new URLSearchParams(window.location.search).get("social") ===
+      "success"
+    );
+  });
+
   // SAFE CALLBACK URL
   const getCallbackUrl = () => {
     if (typeof window === "undefined") return null;
@@ -50,7 +60,7 @@ export default function LoginForm() {
     return null;
   };
 
-  // REDIRECT BASED ON ROLE
+  // REDIRECT BASED ON USER ROLE
   const redirectAfterLogin = (role) => {
     const callbackUrl =
       sessionStorage.getItem("loginCallbackUrl") ||
@@ -82,7 +92,7 @@ export default function LoginForm() {
     router.refresh();
   };
 
-  // COMPLETE SOCIAL LOGIN AFTER OAUTH REDIRECT
+  // COMPLETE SOCIAL LOGIN
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const socialStatus = params.get("social");
@@ -92,6 +102,7 @@ export default function LoginForm() {
     }
 
     socialHandled.current = true;
+    setCheckingSocialLogin(true);
 
     const completeSocialLogin = async () => {
       try {
@@ -114,7 +125,7 @@ export default function LoginForm() {
           );
         }
 
-        // Remove the temporary query parameter.
+        // Remove the temporary OAuth query parameter.
         window.history.replaceState(
           window.history.state,
           "",
@@ -132,6 +143,8 @@ export default function LoginForm() {
         );
 
         socialHandled.current = false;
+      } finally {
+        setCheckingSocialLogin(false);
       }
     };
 
@@ -229,8 +242,7 @@ export default function LoginForm() {
         );
       }
 
-      // Better Auth normally redirects automatically.
-      // Keep this fallback if a URL is returned.
+      // Better Auth normally handles the redirect itself.
       if (data?.url) {
         window.location.assign(data.url);
       }
@@ -247,6 +259,27 @@ export default function LoginForm() {
     }
   };
 
+  // LOADING SCREEN DURING SOCIAL CALLBACK
+  if (checkingSocialLogin) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f3f0ed] px-5">
+        <div className="text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-[#ff6b00]">
+            <Loader2 size={34} className="animate-spin" />
+          </div>
+
+          <h1 className="mt-5 text-xl font-bold text-gray-900">
+            Signing you in...
+          </h1>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Please wait while we verify your account.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#f3f0ed] p-3 sm:p-5 lg:p-7">
       <motion.div
@@ -258,6 +291,7 @@ export default function LoginForm() {
         {/* LEFT: LOGIN FORM */}
         <section className="flex items-center justify-center px-5 py-8 sm:px-10 lg:px-12 xl:px-16">
           <div className="w-full max-w-[470px]">
+            {/* LOGO + REGISTER LINK */}
             <div className="mb-10 flex items-center justify-between gap-3">
               <Link href="/" className="inline-flex items-center">
                 <Image
@@ -281,6 +315,7 @@ export default function LoginForm() {
               </p>
             </div>
 
+            {/* HEADING */}
             <div className="mb-7">
               <p className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-[#ff6b00]">
                 Welcome to Rent Next
@@ -326,6 +361,7 @@ export default function LoginForm() {
               </button>
             </div>
 
+            {/* DIVIDER */}
             <div className="my-6 flex items-center gap-4">
               <div className="h-px flex-1 bg-gray-200" />
               <span className="text-xs font-medium text-gray-400">
@@ -334,6 +370,7 @@ export default function LoginForm() {
               <div className="h-px flex-1 bg-gray-200" />
             </div>
 
+            {/* ERROR */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
@@ -345,6 +382,7 @@ export default function LoginForm() {
               </motion.div>
             )}
 
+            {/* EMAIL + PASSWORD */}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label
@@ -419,6 +457,7 @@ export default function LoginForm() {
                 </div>
               </div>
 
+              {/* FORGOT PASSWORD */}
               <div className="flex justify-end">
                 <Link
                   href="/forgot-password"
@@ -428,6 +467,7 @@ export default function LoginForm() {
                 </Link>
               </div>
 
+              {/* SIGN IN BUTTON */}
               <button
                 type="submit"
                 disabled={loading || Boolean(socialLoading)}
@@ -449,6 +489,7 @@ export default function LoginForm() {
               </button>
             </form>
 
+            {/* BENEFITS */}
             <div className="mt-8 grid grid-cols-3 gap-3 border-t border-gray-100 pt-6">
               <Benefit
                 icon={<ShieldCheck size={19} />}
@@ -469,6 +510,7 @@ export default function LoginForm() {
               />
             </div>
 
+            {/* MOBILE REGISTER LINK */}
             <p className="mt-7 text-center text-sm text-gray-500 lg:hidden">
               Don&apos;t have an account?{" "}
               <Link
@@ -554,6 +596,7 @@ function Benefit({ icon, title, subtitle }) {
         <p className="text-[11px] font-bold text-gray-800 sm:text-xs">
           {title}
         </p>
+
         <p className="mt-1 text-[10px] leading-4 text-gray-400 sm:text-[11px]">
           {subtitle}
         </p>
