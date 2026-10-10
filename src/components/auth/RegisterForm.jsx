@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRef, useState } from "react";
@@ -18,9 +19,12 @@ import {
   X,
   Home,
   Building2,
+  CheckCircle2,
 } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
+
+const ORANGE = "#ff6b00";
 
 function SocialButton({
   provider,
@@ -35,10 +39,37 @@ function SocialButton({
       onClick={() => onClick(provider)}
       disabled={disabled}
       aria-label={`Continue with ${label}`}
-      className="flex h-11 w-full items-center justify-center rounded-xl border border-[#292929] bg-[#0b0b0b] text-white transition hover:border-[#444] hover:bg-[#111] disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex h-12 w-full items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-800 transition duration-200 hover:border-orange-300 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {icon}
     </button>
+  );
+}
+
+function Field({
+  label,
+  id,
+  icon: Icon,
+  children,
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-2 block text-sm font-semibold text-zinc-700"
+      >
+        {label}
+      </label>
+
+      <div className="relative">
+        <Icon
+          size={18}
+          strokeWidth={1.8}
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+        />
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -59,10 +90,7 @@ export default function RegisterForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // ==========================================
   // IMAGE UPLOAD
-  // ==========================================
-
   const handleImageChange = async (event) => {
     const file = event.target.files?.[0];
 
@@ -122,7 +150,6 @@ export default function RegisterForm() {
       console.error("Profile image upload error:", uploadError);
 
       URL.revokeObjectURL(previewUrl);
-
       setImagePreview("");
       setImageUrl("");
 
@@ -140,10 +167,7 @@ export default function RegisterForm() {
     }
   };
 
-  // ==========================================
   // REMOVE IMAGE
-  // ==========================================
-
   const removeImage = () => {
     if (imagePreview) {
       URL.revokeObjectURL(imagePreview);
@@ -157,10 +181,7 @@ export default function RegisterForm() {
     }
   };
 
-  // ==========================================
   // SOCIAL LOGIN
-  // ==========================================
-
   const handleSocialLogin = async (provider) => {
     setError("");
     setLoading(true);
@@ -190,10 +211,7 @@ export default function RegisterForm() {
     }
   };
 
-  // ==========================================
   // REGISTER
-  // ==========================================
-
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -263,9 +281,6 @@ export default function RegisterForm() {
         "Account created successfully. Please log in."
       );
 
-      // IMPORTANT:
-      // Do not send newly registered users directly
-      // to a dashboard.
       router.replace("/login");
     } catch (registerError) {
       console.error("Registration error:", registerError);
@@ -280,81 +295,99 @@ export default function RegisterForm() {
     }
   };
 
-  // ==========================================
-  // UI
-  // ==========================================
+  const inputClass =
+    "h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10 disabled:opacity-60";
 
   return (
-    <main className="min-h-screen bg-[#0b0b0b] px-4 py-10 text-white sm:px-6">
-      <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center">
+    <main className="min-h-screen bg-[#f7f5f2] px-4 py-6 text-zinc-900 sm:px-6 lg:py-10">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl items-center justify-center">
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="w-full max-w-[560px]"
+          transition={{ duration: 0.45 }}
+          className="grid w-full overflow-hidden rounded-[28px] border border-white bg-white shadow-[0_24px_80px_rgba(0,0,0,0.08)] lg:grid-cols-[1fr_0.8fr]"
         >
-          <div className="rounded-2xl border border-[#292929] bg-[#151515] px-6 py-7 shadow-2xl shadow-black/40 sm:px-8 sm:py-8">
+          {/* FORM PANEL */}
+          <section className="px-5 py-8 sm:px-9 sm:py-10 lg:px-12">
             {/* LOGO */}
+            <Link
+              href="/"
+              className="mb-8 flex items-center justify-center gap-3 sm:justify-start"
+              aria-label="Rent Next home"
+            >
+              <Image
+                src="/assets/logo.png"
+                alt="Rent Next"
+                width={48}
+                height={48}
+                priority
+                className="h-11 w-11 object-contain"
+              />
 
-            <div className="flex justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-xl font-bold tracking-tight text-black">
-                RN
+              <span className="text-2xl font-extrabold tracking-tight text-zinc-900">
+                Rent <span style={{ color: ORANGE }}>Next</span>
+                <span style={{ color: ORANGE }}>.</span>
+              </span>
+            </Link>
+
+            {/* HEADING */}
+            <div className="mb-6">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700">
+                <span className="h-2 w-2 rounded-full bg-orange-500" />
+                YOUR NEXT CHAPTER STARTS HERE
               </div>
-            </div>
 
-            {/* HEADER */}
-
-            <div className="mt-5 text-center">
-              <h1 className="text-2xl font-bold tracking-tight">
-                Create Your Account
+              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+                Create your{" "}
+                <span style={{ color: ORANGE }}>account.</span>
               </h1>
 
-              <p className="mt-2 text-sm text-[#737373]">
-                Join our property rental platform
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                Find your place or list your property with Rent Next.
               </p>
             </div>
 
             {/* ERROR */}
-
             {error && (
-              <div
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
                 role="alert"
-                className="mt-5 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400"
+                className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
               >
                 {error}
-              </div>
+              </motion.div>
             )}
 
             {/* SUCCESS */}
-
             {success && (
               <div
                 role="status"
-                className="mt-5 rounded-xl border border-green-900/50 bg-green-950/30 px-4 py-3 text-sm text-green-400"
+                className="mb-4 flex items-start gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
               >
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
                 {success}
               </div>
             )}
 
-            {/* PROFILE IMAGE */}
-
-            <div className="mt-6 flex flex-col items-center">
-              <div className="relative">
-                <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#292929] bg-[#0b0b0b]">
+            {/* PROFILE PHOTO */}
+            <div className="mb-6 flex items-center gap-4 rounded-2xl border border-zinc-100 bg-zinc-50/80 p-4">
+              <div className="relative shrink-0">
+                <div className="flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-orange-100 shadow-sm">
                   {imagePreview ? (
                     <Image
                       src={imagePreview}
                       alt="Profile preview"
-                      width={80}
-                      height={80}
+                      width={68}
+                      height={68}
                       unoptimized
                       className="h-full w-full object-cover"
                     />
                   ) : (
                     <User
-                      size={30}
-                      strokeWidth={1.5}
-                      className="text-[#555]"
+                      size={28}
+                      strokeWidth={1.6}
+                      className="text-orange-600"
                     />
                   )}
                 </div>
@@ -365,7 +398,7 @@ export default function RegisterForm() {
                     onClick={removeImage}
                     disabled={loading || uploadingImage}
                     aria-label="Remove profile image"
-                    className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                    className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white transition hover:bg-red-600 disabled:opacity-50"
                   >
                     <X size={13} />
                   </button>
@@ -376,17 +409,35 @@ export default function RegisterForm() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={loading || uploadingImage}
                   aria-label="Upload profile image"
-                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-white text-black shadow-lg hover:bg-slate-200 disabled:opacity-50"
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-white shadow-sm transition hover:brightness-95 disabled:opacity-50"
+                  style={{ backgroundColor: ORANGE }}
                 >
                   {uploadingImage ? (
-                    <Loader2
-                      size={13}
-                      className="animate-spin"
-                    />
+                    <Loader2 size={13} className="animate-spin" />
                   ) : (
                     <Camera size={13} />
                   )}
                 </button>
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-zinc-800">
+                  Profile photo
+                  <span className="ml-2 text-xs font-normal text-zinc-400">
+                    Optional
+                  </span>
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  Add a photo to personalize your account.
+                  Maximum file size: 5MB.
+                </p>
+
+                {uploadingImage && (
+                  <p className="mt-1 text-xs font-medium text-orange-600">
+                    Uploading image...
+                  </p>
+                )}
               </div>
 
               <input
@@ -396,47 +447,41 @@ export default function RegisterForm() {
                 onChange={handleImageChange}
                 className="hidden"
               />
-
-              <p className="mt-2 text-[11px] text-[#666]">
-                Profile photo is optional · Max 5MB
-              </p>
-
-              {uploadingImage && (
-                <p className="mt-1 text-xs text-orange-400">
-                  Uploading image...
-                </p>
-              )}
             </div>
 
             {/* ACCOUNT TYPE */}
-
-            <div className="mt-6">
-              <label className="mb-2 block text-xs font-medium text-[#999]">
-                Account Type
+            <div className="mb-6">
+              <label className="mb-3 block text-sm font-semibold text-zinc-700">
+                I want to join as
               </label>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setRole("tenant")}
                   disabled={loading}
                   aria-pressed={role === "tenant"}
-                  className={`rounded-xl border px-3 py-3 text-left transition ${
+                  className={`rounded-2xl border p-3.5 text-left transition duration-200 ${
                     role === "tenant"
-                      ? "border-white bg-white text-black"
-                      : "border-[#292929] bg-[#0b0b0b] text-[#aaa] hover:border-[#444]"
+                      ? "border-orange-500 bg-orange-50 ring-2 ring-orange-500/10"
+                      : "border-zinc-200 bg-white hover:border-orange-200"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Home size={18} />
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        role === "tenant"
+                          ? "bg-orange-500 text-white"
+                          : "bg-zinc-100 text-zinc-500"
+                      }`}
+                    >
+                      <Home size={20} />
+                    </div>
 
-                    <div>
-                      <p className="text-sm font-semibold">
-                        Tenant
-                      </p>
-
-                      <p className="mt-0.5 text-[10px] opacity-60">
-                        Find & book
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold">Tenant</p>
+                      <p className="mt-0.5 text-[11px] text-zinc-500">
+                        Find a home
                       </p>
                     </div>
                   </div>
@@ -447,22 +492,27 @@ export default function RegisterForm() {
                   onClick={() => setRole("owner")}
                   disabled={loading}
                   aria-pressed={role === "owner"}
-                  className={`rounded-xl border px-3 py-3 text-left transition ${
+                  className={`rounded-2xl border p-3.5 text-left transition duration-200 ${
                     role === "owner"
-                      ? "border-white bg-white text-black"
-                      : "border-[#292929] bg-[#0b0b0b] text-[#aaa] hover:border-[#444]"
+                      ? "border-orange-500 bg-orange-50 ring-2 ring-orange-500/10"
+                      : "border-zinc-200 bg-white hover:border-orange-200"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Building2 size={18} />
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        role === "owner"
+                          ? "bg-orange-500 text-white"
+                          : "bg-zinc-100 text-zinc-500"
+                      }`}
+                    >
+                      <Building2 size={20} />
+                    </div>
 
-                    <div>
-                      <p className="text-sm font-semibold">
-                        Owner
-                      </p>
-
-                      <p className="mt-0.5 text-[10px] opacity-60">
-                        List & manage
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold">Owner</p>
+                      <p className="mt-0.5 text-[11px] text-zinc-500">
+                        List a property
                       </p>
                     </div>
                   </div>
@@ -471,8 +521,7 @@ export default function RegisterForm() {
             </div>
 
             {/* SOCIAL LOGIN */}
-
-            <div className="mt-5 grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-3">
               <SocialButton
                 provider="google"
                 label="Google"
@@ -480,8 +529,8 @@ export default function RegisterForm() {
                 onClick={handleSocialLogin}
                 icon={
                   <svg
-                    width="18"
-                    height="18"
+                    width="19"
+                    height="19"
                     viewBox="0 0 24 24"
                     aria-hidden="true"
                   >
@@ -510,7 +559,7 @@ export default function RegisterForm() {
                 label="Apple"
                 disabled={loading}
                 onClick={handleSocialLogin}
-                icon={<Apple size={19} />}
+                icon={<Apple size={20} />}
               />
 
               <SocialButton
@@ -520,14 +569,14 @@ export default function RegisterForm() {
                 onClick={handleSocialLogin}
                 icon={
                   <svg
-                    width="18"
-                    height="18"
+                    width="19"
+                    height="19"
                     viewBox="0 0 24 24"
                     aria-hidden="true"
                   >
                     <path
                       fill="#1877F2"
-                      d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.02 10.13 11.93v-8.43H7.08v-3.5h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.5h3.33l-.53 3.5h-2.8V24C19.61 23.09 24 18.09 24 12.07z"
+                      d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.02 10.13 11.93v-8.43H7.08v-3.5h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.5h-3.33V24C19.61 23.09 24 18.09 24 12.07z"
                     />
                   </svg>
                 }
@@ -535,189 +584,138 @@ export default function RegisterForm() {
             </div>
 
             {/* DIVIDER */}
-
-            <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-[#292929]" />
-
-              <span className="whitespace-nowrap text-[10px] font-medium tracking-wider text-[#666]">
-                OR CONTINUE WITH EMAIL
+            <div className="my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-zinc-200" />
+              <span className="whitespace-nowrap text-[10px] font-semibold tracking-[0.14em] text-zinc-400">
+                OR REGISTER WITH EMAIL
               </span>
-
-              <div className="h-px flex-1 bg-[#292929]" />
+              <div className="h-px flex-1 bg-zinc-200" />
             </div>
 
-            {/* FORM */}
-
+            {/* REGISTRATION FORM */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="name"
-                  className="mb-1.5 block text-xs font-medium text-[#aaa]"
+              <Field label="Full Name" id="name" icon={User}>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  autoComplete="name"
+                  minLength={2}
+                  required
+                  disabled={loading}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Email Address" id="email" icon={Mail}>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  required
+                  disabled={loading}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Password" id="password" icon={LockKeyhole}>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Minimum 8 characters"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                  disabled={loading}
+                  className={`${inputClass} pr-11`}
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword((previous) => !previous)
+                  }
+                  aria-label={
+                    showPassword ? "Hide password" : "Show password"
+                  }
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 transition hover:text-orange-600"
                 >
-                  Full Name
-                </label>
+                  {showPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+              </Field>
 
-                <div className="relative">
-                  <User
-                    size={17}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
-                  />
+              <Field
+                label="Confirm Password"
+                id="confirmPassword"
+                icon={LockKeyhole}
+              >
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Re-enter your password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                  disabled={loading}
+                  className={`${inputClass} pr-11`}
+                />
 
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    autoComplete="name"
-                    minLength={2}
-                    required
-                    disabled={loading}
-                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-4 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-1.5 block text-xs font-medium text-[#aaa]"
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowConfirmPassword(
+                      (previous) => !previous
+                    )
+                  }
+                  aria-label={
+                    showConfirmPassword
+                      ? "Hide confirm password"
+                      : "Show confirm password"
+                  }
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 transition hover:text-orange-600"
                 >
-                  Email
-                </label>
-
-                <div className="relative">
-                  <Mail
-                    size={17}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
-                  />
-
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    required
-                    disabled={loading}
-                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-4 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-1.5 block text-xs font-medium text-[#aaa]"
-                >
-                  Password
-                </label>
-
-                <div className="relative">
-                  <LockKeyhole
-                    size={17}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
-                  />
-
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Minimum 8 characters"
-                    autoComplete="new-password"
-                    minLength={8}
-                    required
-                    disabled={loading}
-                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-11 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPassword((previous) => !previous)
-                    }
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#666] hover:text-white"
-                  >
-                    {showPassword ? (
-                      <EyeOff size={17} />
-                    ) : (
-                      <Eye size={17} />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="mb-1.5 block text-xs font-medium text-[#aaa]"
-                >
-                  Confirm Password
-                </label>
-
-                <div className="relative">
-                  <LockKeyhole
-                    size={17}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666]"
-                  />
-
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={
-                      showConfirmPassword ? "text" : "password"
-                    }
-                    placeholder="Re-enter your password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    required
-                    disabled={loading}
-                    className="h-11 w-full rounded-xl border border-[#292929] bg-[#0b0b0b] pl-10 pr-11 text-sm text-white outline-none placeholder:text-[#555] focus:border-[#777] disabled:opacity-60"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowConfirmPassword(
-                        (previous) => !previous
-                      )
-                    }
-                    aria-label={
-                      showConfirmPassword
-                        ? "Hide confirm password"
-                        : "Show confirm password"
-                    }
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#666] hover:text-white"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={17} />
-                    ) : (
-                      <Eye size={17} />
-                    )}
-                  </button>
-                </div>
-              </div>
+                  {showConfirmPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+              </Field>
 
               {/* SELECTED ROLE */}
+              <div className="flex items-center justify-between rounded-xl border border-orange-100 bg-orange-50/70 px-4 py-3">
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">
+                    Selected account type
+                  </p>
+                  <p className="mt-0.5 text-sm font-bold capitalize text-zinc-800">
+                    {role}
+                  </p>
+                </div>
 
-              <div className="flex items-center justify-between rounded-xl border border-[#292929] bg-[#0b0b0b] px-3.5 py-2.5">
-                <span className="text-xs text-[#666]">
-                  Selected account type
-                </span>
-
-                <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold capitalize text-black">
-                  {role}
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                  {role === "owner" ? (
+                    <Building2 size={17} />
+                  ) : (
+                    <Home size={17} />
+                  )}
                 </span>
               </div>
 
-              {/* SUBMIT */}
-
+              {/* ORANGE PRIMARY BUTTON */}
               <button
                 type="submit"
                 disabled={loading || uploadingImage}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#ff6b00] px-5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition duration-200 hover:bg-[#ed6000] hover:shadow-orange-500/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? (
                   <>
@@ -727,33 +725,118 @@ export default function RegisterForm() {
                 ) : (
                   <>
                     Create Account
-                    <ArrowRight size={18} />
+                    <ArrowRight
+                      size={18}
+                      className="transition-transform group-hover:translate-x-1"
+                    />
                   </>
                 )}
               </button>
             </form>
 
             {/* LOGIN LINK */}
-
             <div className="mt-6 text-center">
-              <p className="text-sm text-[#777]">
+              <p className="text-sm text-zinc-500">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-medium text-white hover:text-[#ccc]"
+                  className="font-bold text-orange-600 transition hover:text-orange-700"
                 >
-                  Login
+                  Sign in
                 </Link>
               </p>
             </div>
 
-            <p className="mt-5 text-center text-[10px] leading-5 text-[#555]">
+            <p className="mt-5 text-center text-[11px] leading-5 text-zinc-400">
               By creating an account, you agree to our{" "}
-              <span className="text-[#777]">Terms of Service</span>{" "}
+              <Link
+                href="/terms"
+                className="font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-2 hover:text-orange-600"
+              >
+                Terms of Service
+              </Link>{" "}
               and{" "}
-              <span className="text-[#777]">Privacy Policy</span>.
+              <Link
+                href="/privacy"
+                className="font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-2 hover:text-orange-600"
+              >
+                Privacy Policy
+              </Link>
+              .
             </p>
-          </div>
+          </section>
+
+          {/* RIGHT DESIGN PANEL */}
+          <aside className="relative hidden min-h-full overflow-hidden bg-zinc-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-zinc-950 to-zinc-950" />
+
+            <div className="absolute -right-28 -top-24 h-80 w-80 rounded-full bg-orange-500/15 blur-3xl" />
+            <div className="absolute -bottom-28 -left-24 h-80 w-80 rounded-full bg-orange-600/15 blur-3xl" />
+
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-[10px] font-semibold tracking-[0.22em] text-zinc-300">
+                <span className="h-2 w-2 rounded-full bg-orange-500" />
+                RENT NEXT · PROPERTY PLATFORM
+              </div>
+
+              <h2 className="mt-10 max-w-md text-4xl font-extrabold leading-tight tracking-tight xl:text-5xl">
+                Your next home
+                <br />
+                starts <span className="text-orange-500">here.</span>
+              </h2>
+
+              <p className="mt-5 max-w-sm text-sm leading-7 text-zinc-300">
+                Discover spaces that fit your lifestyle. Find a home
+                you love or share your property with the right people.
+              </p>
+            </div>
+
+            <div className="relative z-10 mt-12 space-y-4">
+              {[
+                {
+                  title: "Find your place",
+                  description: "Explore homes that feel right for you.",
+                  icon: Home,
+                },
+                {
+                  title: "Manage your property",
+                  description: "Bring your rental journey into one place.",
+                  icon: Building2,
+                },
+                {
+                  title: "A simpler experience",
+                  description: "Get started with your own account.",
+                  icon: CheckCircle2,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.title}
+                    className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 text-orange-400">
+                      <Icon size={21} />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        {item.title}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-zinc-400">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="relative z-10 mt-10 border-t border-white/10 pt-5 text-xs text-zinc-500">
+              Find. Rent. Live better.
+            </div>
+          </aside>
         </motion.div>
       </div>
     </main>
