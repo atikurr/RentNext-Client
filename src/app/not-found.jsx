@@ -40,7 +40,7 @@ export default function NotFound() {
         </h2>
 
         <p className="mx-auto mt-4 max-w-md text-base leading-7 text-gray-500 sm:text-lg">
-          The property or page you are looking for does not exist,
+          The property or pages you are looking for does not exist,
           may have been moved, or is temporarily unavailable.
         </p>
 
